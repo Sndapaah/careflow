@@ -9,52 +9,149 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("CareFlow AI"),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      body: SingleChildScrollView(
+  padding: const EdgeInsets.all(16),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Hello Nana 👋",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
-
-            const SizedBox(height: 10),
-
-            const Text(
+            SizedBox(height: 8),
+            Text(
               "How are you feeling today?",
             ),
+          ],
+        ),
+      ),
 
-            const SizedBox(height: 30),
+      const SizedBox(height: 25),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/symptoms',
-                  );
-                },
-                child: const Text(
-                  "Start Symptom Assessment",
-                ),
-              ),
-            ),
+      TextField(
+        readOnly: true,
+        onTap: () {
+          Navigator.pushNamed(context, '/symptoms');
+        },
+        decoration: InputDecoration(
+          hintText: "Describe Symptoms",
+          prefixIcon: const Icon(Icons.search),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
+      ),
 
-            const SizedBox(height: 30),
+      const SizedBox(height: 25),
 
-            const Text(
-              "Quick Actions",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+      const Text(
+  "Quick Actions",
+  style: TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  ),
+),
 
-            const SizedBox(height: 10),
+const SizedBox(height: 12),
+
+Wrap(
+  spacing: 10,
+  runSpacing: 10,
+  children: [
+    ActionChip(
+      avatar: Icon(Icons.warning),
+      label: Text("Emergency"),
+      onPressed: null,
+    ),
+    ActionChip(
+      avatar: Icon(Icons.local_hospital),
+      label: Text("Find Hospital"),
+      onPressed: null,
+    ),
+    ActionChip(
+      avatar: Icon(Icons.calendar_today),
+      label: Text("Appointments"),
+      onPressed: null,
+    ),
+    ActionChip(
+      avatar: Icon(Icons.history),
+      label: Text("History"),
+      onPressed: null,
+    ),
+  ],
+),
+const SizedBox(height: 25),
+
+const Text(
+  "Common Symptoms",
+  style: TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  ),
+),
+
+const SizedBox(height: 10),
+
+Wrap(
+  spacing: 10,
+  runSpacing: 10,
+  children: [
+    Chip(label: Text("Fever")),
+    Chip(label: Text("Cough")),
+    Chip(label: Text("Headache")),
+    Chip(label: Text("Chest Pain")),
+    Chip(label: Text("Fatigue")),
+  ],
+),
+
+const SizedBox(height: 25),
+
+const Text(
+  "Nearby Facilities",
+  style: TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  ),
+),
+
+const SizedBox(height: 10),
+
+Card(
+  child: ListTile(
+    leading: Icon(Icons.local_hospital),
+    title: Text("KNUST Hospital"),
+    subtitle: Text("2.3 km away"),
+  ),
+),
+
+Card(
+  child: ListTile(
+    leading: Icon(Icons.local_hospital),
+    title: Text("University Hospital"),
+    subtitle: Text("3.8 km away"),
+  ),
+),
+
+Card(
+  child: ListTile(
+    leading: Icon(Icons.local_hospital),
+    title: Text("Komfo Anokye"),
+    subtitle: Text("5.6 km away"),
+  ),
+),
 
             Wrap(
               spacing: 10,

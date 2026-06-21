@@ -7,38 +7,97 @@ class AnalysisScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("AI Analysis"),
+        title: const Text("AI Assessment"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Possible Conditions",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade100,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Severity",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "HIGH",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
 
             const SizedBox(height: 20),
 
-            const Text("• Respiratory Infection"),
-            const Text("• Cardiac Concern"),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.analytics),
+                title: Text("Confidence Score"),
+                subtitle: Text("89%"),
+              ),
+            ),
 
             const SizedBox(height: 20),
 
             const Text(
-              "Severity: HIGH",
+              "Possible Conditions",
               style: TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
 
             const SizedBox(height: 10),
 
-            const Text("Confidence: 89%"),
+            const Card(
+              child: ListTile(
+                leading: Icon(Icons.medical_services),
+                title: Text("Respiratory Infection"),
+              ),
+            ),
+
+            const Card(
+              child: ListTile(
+                leading: Icon(Icons.favorite),
+                title: Text("Cardiac Concern"),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Seek medical attention today."
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
             const Spacer(),
 
@@ -52,7 +111,7 @@ class AnalysisScreen extends StatelessWidget {
                   );
                 },
                 child: const Text(
-                  "View Recommendations",
+                  "View Recommended Hospitals",
                 ),
               ),
             ),

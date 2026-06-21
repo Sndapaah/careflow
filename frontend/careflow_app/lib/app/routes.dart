@@ -10,6 +10,7 @@ import '../features/hospitals/screens/recommendation_screen.dart';
 import '../features/maps/screens/map_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/dashboard/screens/hospital_dashboard_screen.dart';
+import '../features/hospitals/screens/hospital_details_screen.dart';
 
 final Map<String, WidgetBuilder> appRoutes = {
   '/': (context) => const LoginScreen(),
@@ -22,4 +23,5 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/map': (context) => const MapScreen(),
   '/profile': (context) => const ProfileScreen(),
   '/dashboard': (context) => const HospitalDashboardScreen(),
+'/hospital-details': (context) => const HospitalDetailsScreen(),
 };

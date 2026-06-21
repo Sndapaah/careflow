@@ -5,9 +5,15 @@ class MapScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text('Map Screen'),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Facility Map"),
+      ),
+      body: const Center(
+        child: Text(
+          "Google Maps Integration Coming Soon",
+          style: TextStyle(fontSize: 18),
+        ),
       ),
     );
   }

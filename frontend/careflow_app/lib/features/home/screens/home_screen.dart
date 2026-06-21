@@ -7,168 +7,141 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("CareFlow AI"),
+        title: const Text("CareFlow"),
       ),
       body: SingleChildScrollView(
-  padding: const EdgeInsets.all(16),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.blue.shade50,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Column(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Hello Nana 👋",
+
+            const Text(
+              "Good Morning, Nana",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              "How are you feeling today?",
+
+            const SizedBox(height: 8),
+
+            const Text(
+              "Stay healthy today ❤️",
             ),
-          ],
-        ),
-      ),
 
-      const SizedBox(height: 25),
+            const SizedBox(height: 24),
 
-      TextField(
-        readOnly: true,
-        onTap: () {
-          Navigator.pushNamed(context, '/symptoms');
-        },
-        decoration: InputDecoration(
-          hintText: "Describe Symptoms",
-          prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-        ),
-      ),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
 
-      const SizedBox(height: 25),
+                    const Text(
+                      "Start Symptom Assessment",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
 
-      const Text(
-  "Quick Actions",
-  style: TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.bold,
-  ),
-),
+                    const SizedBox(height: 10),
 
-const SizedBox(height: 12),
+                    const Text(
+                      "Describe how you're feeling and get recommendations.",
+                    ),
 
-Wrap(
-  spacing: 10,
-  runSpacing: 10,
-  children: [
-    ActionChip(
-      avatar: Icon(Icons.warning),
-      label: Text("Emergency"),
-      onPressed: null,
-    ),
-    ActionChip(
-      avatar: Icon(Icons.local_hospital),
-      label: Text("Find Hospital"),
-      onPressed: null,
-    ),
-    ActionChip(
-      avatar: Icon(Icons.calendar_today),
-      label: Text("Appointments"),
-      onPressed: null,
-    ),
-    ActionChip(
-      avatar: Icon(Icons.history),
-      label: Text("History"),
-      onPressed: null,
-    ),
-  ],
-),
-const SizedBox(height: 25),
+                    const SizedBox(height: 16),
 
-const Text(
-  "Common Symptoms",
-  style: TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.bold,
-  ),
-),
-
-const SizedBox(height: 10),
-
-Wrap(
-  spacing: 10,
-  runSpacing: 10,
-  children: [
-    Chip(label: Text("Fever")),
-    Chip(label: Text("Cough")),
-    Chip(label: Text("Headache")),
-    Chip(label: Text("Chest Pain")),
-    Chip(label: Text("Fatigue")),
-  ],
-),
-
-const SizedBox(height: 25),
-
-const Text(
-  "Nearby Facilities",
-  style: TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.bold,
-  ),
-),
-
-const SizedBox(height: 10),
-
-Card(
-  child: ListTile(
-    leading: Icon(Icons.local_hospital),
-    title: Text("KNUST Hospital"),
-    subtitle: Text("2.3 km away"),
-  ),
-),
-
-Card(
-  child: ListTile(
-    leading: Icon(Icons.local_hospital),
-    title: Text("University Hospital"),
-    subtitle: Text("3.8 km away"),
-  ),
-),
-
-Card(
-  child: ListTile(
-    leading: Icon(Icons.local_hospital),
-    title: Text("Komfo Anokye"),
-    subtitle: Text("5.6 km away"),
-  ),
-),
-
-            Wrap(
-              spacing: 10,
-              children: [
-                ActionChip(
-                  label: const Text("Emergency"),
-                  onPressed: () {},
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/symptoms',
+                        );
+                      },
+                      child: const Text("Start"),
+                    ),
+                  ],
                 ),
-                ActionChip(
-                  label: const Text("Find Hospital"),
-                  onPressed: () {},
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            Card(
+              color: Colors.redAccent,
+              child: ListTile(
+                title: const Text(
+                  "🚨 Emergency Assistance",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                ActionChip(
-                  label: const Text("Appointments"),
-                  onPressed: () {},
+                subtitle: const Text(
+                  "Get immediate recommendations",
+                  style: TextStyle(
+                    color: Colors.white,
+                  ),
                 ),
-              ],
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/recommendations',
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            const Text(
+              "Recent Assessments",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const ListTile(
+              leading: Icon(Icons.history),
+              title: Text("Fever"),
+            ),
+
+            const ListTile(
+              leading: Icon(Icons.history),
+              title: Text("Headache"),
+            ),
+
+            const ListTile(
+              leading: Icon(Icons.history),
+              title: Text("Chest Pain"),
+            ),
+
+            const SizedBox(height: 24),
+
+            const Text(
+              "Nearby Hospitals",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const ListTile(
+              leading: Icon(Icons.local_hospital),
+              title: Text("KNUST Hospital"),
+            ),
+
+            const ListTile(
+              leading: Icon(Icons.local_hospital),
+              title: Text("KATH"),
+            ),
+
+            const ListTile(
+              leading: Icon(Icons.local_hospital),
+              title: Text("University Hospital"),
             ),
           ],
         ),

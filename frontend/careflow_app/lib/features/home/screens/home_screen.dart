@@ -15,137 +15,156 @@ class HomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            const Text(
-              "Good Morning, Nana",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
 
-            const SizedBox(height: 8),
-
-            const Text(
-              "Stay healthy today ❤️",
-            ),
-
-            const SizedBox(height: 24),
-
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
-                    const Text(
-                      "Start Symptom Assessment",
+                    Text(
+                      "Hello Nana,",
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
+                        color: Colors.black54,
+                      ),
+                    ),
+
+                    Text(
+                      "How are you feeling today?",
+                      style: TextStyle(
+                        fontSize: 24.0,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
 
-                    const SizedBox(height: 10),
-
-                    const Text(
-                      "Describe how you're feeling and get recommendations.",
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/symptoms',
-                        );
-                      },
-                      child: const Text("Start"),
-                    ),
                   ],
+                ),
+
+              ],
+            ),
+
+            const SizedBox(height: 40),
+
+            Center(
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.lightBlueAccent,
+                      Colors.blue,
+                    ],
+                  ),
                 ),
               ),
             ),
 
             const SizedBox(height: 20),
 
-            Card(
-              color: Colors.redAccent,
-              child: ListTile(
-                title: const Text(
-                  "🚨 Emergency Assistance",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+            const Center(
+              child: Text(
+                "CareFlow AI",
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
                 ),
-                subtitle: const Text(
-                  "Get immediate recommendations",
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            const Center(
+              child: Text(
+                "Tell me what's wrong — I'll find the best care nearby.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
                 ),
-                onTap: () {
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            TextField(
+              decoration: InputDecoration(
+                hintText: "Describe your symptoms...",
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "COMMON SYMPTOMS",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+
+                  symptomChip("Headache"),
+                  symptomChip("Fever"),
+                  symptomChip("Cough"),
+                  symptomChip("Body Pain"),
+                  symptomChip("Malaria"),
+
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            SizedBox(
+              width: double.infinity,
+              height: 60,
+              child: ElevatedButton(
+                onPressed: () {
                   Navigator.pushNamed(
                     context,
-                    '/recommendations',
+                    '/analysis',
                   );
                 },
+                child: const Text(
+                  "Analyze Symptoms",
+                  style: TextStyle(
+                    fontSize: 20,
+                  ),
+                ),
               ),
             ),
 
-            const SizedBox(height: 24),
-
-            const Text(
-              "Recent Assessments",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const ListTile(
-              leading: Icon(Icons.history),
-              title: Text("Fever"),
-            ),
-
-            const ListTile(
-              leading: Icon(Icons.history),
-              title: Text("Headache"),
-            ),
-
-            const ListTile(
-              leading: Icon(Icons.history),
-              title: Text("Chest Pain"),
-            ),
-
-            const SizedBox(height: 24),
-
-            const Text(
-              "Nearby Hospitals",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const ListTile(
-              leading: Icon(Icons.local_hospital),
-              title: Text("KNUST Hospital"),
-            ),
-
-            const ListTile(
-              leading: Icon(Icons.local_hospital),
-              title: Text("KATH"),
-            ),
-
-            const ListTile(
-              leading: Icon(Icons.local_hospital),
-              title: Text("University Hospital"),
-            ),
           ],
         ),
       ),
     );
   }
+
+  Widget symptomChip(String text) {
+  return Container(
+    margin: const EdgeInsets.only(right: 10),
+    child: Chip(
+      label: Text(text),
+    ),
+  );
 }
+}
+// Future enhancement:
+// Navigator.pushNamed(context, '/symptoms');
+// Reserved for conversational AI assessment flow.

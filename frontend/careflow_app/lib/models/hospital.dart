@@ -7,6 +7,17 @@ class Hospital {
   final int incomingPatients;
   final int waitTime;
   final String status;
+  final int rank;
+
+  // New fields
+
+  final String lastUpdated;
+  final String congestionLevel;
+  final int predictedPatients;
+  final int predictedWaitTime;
+  final int predictionConfidence;
+  final int historicalReliability;
+  final List<String> specialties;
 
   Hospital({
     required this.name,
@@ -17,5 +28,14 @@ class Hospital {
     required this.incomingPatients,
     required this.waitTime,
     required this.status,
+    required this.rank,
+
+    required this.lastUpdated,
+    required this.congestionLevel,
+    required this.predictedPatients,
+    required this.predictedWaitTime,
+    required this.predictionConfidence,
+    required this.historicalReliability,
+    required this.specialties,
   });
 }

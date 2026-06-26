@@ -16,21 +16,14 @@ class RecommendationScreen extends StatelessWidget {
 
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: hospitals.length,
-        itemBuilder: (context, index) {
-        final facility = hospitals[index];
+            itemCount: hospitals.length,
+            itemBuilder: (context, index) {
+            final facility = hospitals[index];
 
-          return HospitalCard(
-            hospital: facility.name,
-            confidence: '${facility.confidence}%',
-            distance: '${facility.distance} km',
-            beds: '${facility.availableBeds}',
-            patients: '${facility.currentPatients}',
-            incoming: '${facility.incomingPatients}',
-            waitTime: '${facility.waitTime} mins',
-            status: facility.status,
-          );
-        },
+            return HospitalCard(
+              hospital: facility,
+            );
+          },
       ),
     );
   }

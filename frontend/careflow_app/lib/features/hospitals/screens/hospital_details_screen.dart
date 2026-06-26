@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../models/hospital.dart';
+import 'hospital_details_screen.dart';
 
 class HospitalDetailsScreen extends StatelessWidget {
-  const HospitalDetailsScreen({super.key});
+  final Hospital hospital;
+
+  const HospitalDetailsScreen({
+    super.key,
+    required this.hospital,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -12,11 +19,11 @@ class HospitalDetailsScreen extends StatelessWidget {
 
       body: ListView(
         padding: const EdgeInsets.all(16),
-        children: const [
+        children: [
 
           Text(
-            "KNUST Hospital",
-            style: TextStyle(
+            hospital.name,
+              style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
@@ -27,30 +34,73 @@ class HospitalDetailsScreen extends StatelessWidget {
           Card(
             child: ListTile(
               title: Text("Available Beds"),
-              subtitle: Text("14"),
+              subtitle: Text(hospital.availableBeds.toString()),
             ),
           ),
 
-          Card(
+            Card(
             child: ListTile(
-              title: Text("Doctors Available"),
-              subtitle: Text("9"),
+              title: const Text("Incoming Patients"),
+              subtitle: Text(
+                hospital.incomingPatients.toString(),
+              ),
             ),
           ),
 
           Card(
             child: ListTile(
               title: Text("Current Patients"),
-              subtitle: Text("82"),
+              subtitle: Text(hospital.currentPatients.toString(),),
             ),
           ),
 
           Card(
             child: ListTile(
               title: Text("Estimated Wait Time"),
-              subtitle: Text("18 mins"),
+              subtitle: Text("${hospital.waitTime} mins",
+            ),
             ),
           ),
+          const SizedBox(height: 20),
+
+Text(
+  "Predictive Insights",
+  style: TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+  ),
+),
+
+const SizedBox(height: 10),
+
+Card(
+  child: Column(
+    children: [
+
+      ListTile(
+        title: const Text("Predicted Patients"),
+        trailing: Text(
+          hospital.predictedPatients.toString(),
+        ),
+      ),
+
+      ListTile(
+        title: const Text("Predicted Wait Time"),
+        trailing: Text(
+          "${hospital.predictedWaitTime} mins",
+        ),
+      ),
+
+      ListTile(
+        title: const Text("Prediction Confidence"),
+        trailing: Text(
+          "${hospital.predictionConfidence}%",
+        ),
+      ),
+
+    ],
+  ),
+),
         ],
       ),
     );

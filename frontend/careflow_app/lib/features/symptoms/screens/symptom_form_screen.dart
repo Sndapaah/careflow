@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../models/symptom_assessment.dart';
+import '../../analysis/screens/analysis_screen.dart';
 
 class SymptomFormScreen extends StatefulWidget {
   const SymptomFormScreen({super.key});
@@ -12,6 +14,11 @@ class _SymptomFormScreenState
     extends State<SymptomFormScreen> {
 
   String severity = "Moderate";
+  final TextEditingController symptomController =
+    TextEditingController();
+
+final TextEditingController notesController =
+    TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -37,8 +44,9 @@ class _SymptomFormScreenState
             const SizedBox(height: 20),
 
             TextField(
-              decoration: InputDecoration(
-                hintText:
+                controller: symptomController,
+                decoration: InputDecoration(
+                  hintText:
                     "e.g. Chest pain and dizziness",
                 prefixIcon:
                     const Icon(Icons.search),
@@ -120,8 +128,9 @@ class _SymptomFormScreenState
             const SizedBox(height: 20),
 
             TextField(
-              maxLines: 4,
-              decoration: InputDecoration(
+                controller: notesController,
+                maxLines: 4,
+                decoration: InputDecoration(
                 hintText:
                     "Additional notes...",
                 border: OutlineInputBorder(
@@ -137,11 +146,21 @@ class _SymptomFormScreenState
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/analysis',
-                  );
-                },
+                final assessment = SymptomAssessment(
+                  symptoms: symptomController.text,
+                  severity: severity,
+                  notes: notesController.text,
+                );
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AnalysisScreen(
+                      assessment: assessment,
+                    ),
+                  ),
+                );
+              },
                 child: const Text(
                   "Analyze Symptoms",
                 ),

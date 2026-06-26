@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../../models/symptom_assessment.dart';
 
 class AnalysisScreen extends StatelessWidget {
-  const AnalysisScreen({super.key});
+  final SymptomAssessment assessment;
+
+  const AnalysisScreen({
+    super.key,
+    required this.assessment,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -9,7 +15,7 @@ class AnalysisScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("AI Assessment"),
       ),
-      body: Padding(
+          body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -21,7 +27,7 @@ class AnalysisScreen extends StatelessWidget {
                 color: Colors.orange.shade100,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -32,7 +38,7 @@ class AnalysisScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    "HIGH",
+                    assessment.severity,
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -42,6 +48,12 @@ class AnalysisScreen extends StatelessWidget {
               ),
             ),
 
+Card(
+  child: ListTile(
+    title: const Text("Symptoms Entered"),
+    subtitle: Text(assessment.symptoms),
+  ),
+),
             const SizedBox(height: 20),
 
             Card(
@@ -54,31 +66,84 @@ class AnalysisScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            const Text(
-              "Possible Conditions",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+              const Text(
+                "Recommended Specialty",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
 
-            const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-            const Card(
-              child: ListTile(
-                leading: Icon(Icons.medical_services),
-                title: Text("Respiratory Infection"),
+              Card(
+                child: ListTile(
+                  leading: Icon(Icons.local_hospital),
+                  title: Text("General Medicine"),
+                  subtitle: Text(
+                    "Best suited for your symptoms",
+                  ),
+                ),
               ),
-            ),
 
-            const Card(
-              child: ListTile(
-                leading: Icon(Icons.favorite),
-                title: Text("Cardiac Concern"),
+              const SizedBox(height: 20),
+
+              Text(
+                "CareFlow Reasoning",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
 
-            const SizedBox(height: 20),
+              SizedBox(height: 10),
+
+              Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    "Based on symptoms (${assessment.severity} severity), "
+              "CareFlow is analyzing possible conditions and routing options."
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              Text(
+                "Predicted Care Journey",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              Card(
+                child: Column(
+                  children: [
+
+                    ListTile(
+                      leading: Icon(Icons.timer),
+                      title: Text("Expected Wait"),
+                      trailing: Text("18 mins"),
+                    ),
+
+                    ListTile(
+                      leading: Icon(Icons.medical_information),
+                      title: Text("Recommended Facility Type"),
+                      trailing: Text("District Hospital"),
+                    ),
+
+                    ListTile(
+                      leading: Icon(Icons.check_circle),
+                      title: Text("Confidence"),
+                      trailing: Text("89%"),
+                    ),
+
+                  ],
+                ),
+              ),
 
             Container(
               padding: const EdgeInsets.all(16),
@@ -99,22 +164,22 @@ class AnalysisScreen extends StatelessWidget {
               ),
             ),
 
-            const Spacer(),
+            //const Spacer(),
 
             SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/recommendations',
-                  );
-                },
-                child: const Text(
-                  "View Recommended Hospitals",
-                ),
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  '/recommendations',
+                );
+              },
+              child: const Text(
+                "View Recommended Hospitals",
               ),
             ),
+          ),
           ],
         ),
       ),

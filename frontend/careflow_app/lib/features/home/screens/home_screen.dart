@@ -138,7 +138,7 @@ class HomeScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushNamed(
                     context,
-                    '/analysis',
+                    '/symptoms',
                   );
                 },
                 child: const Text(

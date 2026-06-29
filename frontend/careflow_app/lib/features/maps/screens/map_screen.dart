@@ -1,31 +1,78 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
 import '../../../services/mock_data.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class MapScreen extends StatelessWidget {
   const MapScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+final knust = LatLng(6.6736, -1.5713);
+final komfo = LatLng(6.6885, -1.6244);
+final suntreso = LatLng(6.7003, -1.6464);
+
+    return Scaffold(      
       body: Stack(
         children: [
 
-          // MAP AREA
-          Container(
-            color: Colors.grey.shade300,
-            width: double.infinity,
-            height: double.infinity,
-            child: const Center(
-              child: Text(
-                "MAP PLACEHOLDER",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
+      FlutterMap(
+  options: MapOptions(
+    initialCenter: knust,
+    initialZoom: 13.8,
+  ),
 
+  children: [
+
+    TileLayer(
+      urlTemplate:
+          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      userAgentPackageName: 'com.careflow.app',
+    ),
+
+    MarkerLayer(
+      markers: [
+
+        Marker(
+          point: knust,
+          width: 60,
+          height: 60,
+          child: const Icon(
+            Icons.local_hospital,
+            color: Colors.red,
+            size: 40,
+          ),
+        ),
+
+        Marker(
+          point: komfo,
+          width: 60,
+          height: 60,
+          child: const Icon(
+            Icons.local_hospital,
+            color: Colors.blue,
+            size: 40,
+          ),
+        ),
+
+        Marker(
+          point: suntreso,
+          width: 60,
+          height: 60,
+          child: const Icon(
+            Icons.local_hospital,
+            color: Colors.green,
+            size: 40,
+          ),
+        ),
+
+      ],
+    ),
+
+  ],
+),
           // TOP BAR
           SafeArea(
             child: Padding(

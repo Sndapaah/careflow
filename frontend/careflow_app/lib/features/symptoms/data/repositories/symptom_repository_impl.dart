@@ -1,6 +1,7 @@
 import '../../../../core/error/failure.dart';
 import '../../domain/entities/symptom_analysis.dart';
 import '../../domain/repositories/symptom_repository.dart';
+import '../../../../core/utils/emergency_detector.dart';
 
 /// Rule-based stand-in for the CareFlow AI service. It returns plausible,
 /// deterministic output so the analysis screen can be built and reviewed
@@ -18,7 +19,6 @@ class SymptomRepositoryImpl implements SymptomRepository {
     'Sore throat',
   ];
 
-  /// Maps a known symptom to the conditions the checker surfaces for it.
   static const Map<String, List<PossibleCondition>> _knowledge =
       <String, List<PossibleCondition>>{
         'headache': <PossibleCondition>[
@@ -52,16 +52,22 @@ class SymptomRepositoryImpl implements SymptomRepository {
       throw const ServerFailure('Tell us what you are feeling first.');
     }
 
+    final bool isEmergency = EmergencyDetector.isEmergency(cleaned);
     final List<PossibleCondition> conditions = _matchConditions(cleaned);
 
     return SymptomAnalysis(
       symptoms: cleaned,
       conditions: conditions,
-      recommendations: const <String>[
-        'Visit a healthcare facility for assessment.',
-        'Stay hydrated and rest well.',
-      ],
-      severity: _severityFor(conditions),
+      recommendations: isEmergency
+          ? const <String>[
+              'Seek emergency medical attention immediately.',
+              'Call emergency services or go to the nearest hospital now.',
+            ]
+          : const <String>[
+              'Visit a healthcare facility for assessment.',
+              'Stay hydrated and rest well.',
+            ],
+      severity: isEmergency ? SeverityLevel.high : _severityFor(conditions),
     );
   }
 

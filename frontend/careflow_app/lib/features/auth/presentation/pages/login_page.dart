@@ -8,12 +8,13 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_buttons.dart';
-import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/careflow_logo.dart';
 import '../../../../core/widgets/social_auth_row.dart';
 import '../../domain/entities/auth_user.dart';
 import '../bloc/login_bloc.dart';
 import '../widgets/auth_footer_prompt.dart';
+import '../../../../core/utils/field_validators.dart';
+import '../../../../core/widgets/validated_field.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -74,20 +75,20 @@ class _LoginView extends StatelessWidget {
                     padding: _inset,
                     child: Column(
                       children: <Widget>[
-                        AppTextField(
+                        ValidatedField(
                           hint: 'Email',
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
-                          onChanged: (String value) =>
-                              bloc.add(LoginEmailChanged(value)),
+                          validator: FieldValidators.email,
+                          onChanged: (String value) => bloc.add(LoginEmailChanged(value)),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        AppTextField(
+                        ValidatedField(
                           hint: 'Password',
                           obscureText: true,
                           textInputAction: TextInputAction.done,
-                          onChanged: (String value) =>
-                              bloc.add(LoginPasswordChanged(value)),
+                          validator: FieldValidators.password,
+                          onChanged: (String value) => bloc.add(LoginPasswordChanged(value)),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         PrimaryButton(
@@ -115,9 +116,11 @@ class _LoginView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.xxl),
                   AuthFooterPrompt(
-                    question: 'Already have an account?',
-                    action: 'Login',
-                    onTap: () {},
+                    // question: 'Already have an account?',
+                    // action: 'Login',
+                    question: 'Don\'t have an account?',
+                    action: 'Sign Up',
+                    onTap: () => context.go(AppRoutes.register),
                   ),
                 ],
               ),

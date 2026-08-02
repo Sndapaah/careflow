@@ -127,11 +127,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     required GetUnreadNotificationCount getUnreadNotificationCount,
     required String patientName,
   }) : _getNearbyFacilities = getNearbyFacilities,
-       _getQuickSymptoms = getQuickSymptoms,
-       _getRecentSymptoms = getRecentSymptoms,
-       _getDailyTip = getDailyTip,
-       _getUnreadNotificationCount = getUnreadNotificationCount,
-       super(HomeState(patientName: patientName)) {
+      _getQuickSymptoms = getQuickSymptoms,
+      _getRecentSymptoms = getRecentSymptoms,
+      _getDailyTip = getDailyTip,
+      _getUnreadNotificationCount = getUnreadNotificationCount,
+      super(HomeState(patientName: patientName)) {
     on<HomeStarted>(_onStarted);
     on<HomeSymptomQueryChanged>(
       (HomeSymptomQueryChanged e, Emitter<HomeState> emit) =>

@@ -97,8 +97,8 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     required SignInWithEmail signInWithEmail,
     required SignInWithProvider signInWithProvider,
   }) : _signInWithEmail = signInWithEmail,
-       _signInWithProvider = signInWithProvider,
-       super(const LoginState()) {
+      _signInWithProvider = signInWithProvider,
+      super(const LoginState()) {
     on<LoginEmailChanged>(_onEmailChanged);
     on<LoginPasswordChanged>(_onPasswordChanged);
     on<LoginSubmitted>(_onSubmitted);

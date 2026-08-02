@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../../domain/entities/health_tip.dart';
 import '../../domain/repositories/home_repository.dart';
 
@@ -15,13 +17,31 @@ class HomeRepositoryImpl implements HomeRepository {
       title: "Today's Health Tip",
       body: 'Wash your hands before meals to keep infections away.',
     ),
+    HealthTip(
+      title: "Today's Health Tip",
+      body: 'A 10-minute walk after meals helps regulate blood sugar.',
+    ),
+    HealthTip(
+      title: "Today's Health Tip",
+      body: 'Take breaks from screens every 20 minutes to rest your eyes.',
+    ),
+    HealthTip(
+      title: "Today's Health Tip",
+      body: 'Deep breathing for a few minutes a day can lower stress.',
+    ),
   ];
 
   @override
   Future<HealthTip> getDailyTip() async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
-    // Rotates daily rather than randomly, so the tip is stable within a day.
-    return _tips[DateTime.now().day % _tips.length];
+
+    // Seed a Random with today's date so the pick is stable across app
+    // restarts within the same day, but looks shuffled day-to-day rather
+    // than cycling in a visible day % length pattern.
+    final DateTime now = DateTime.now();
+    final int seed = now.year * 10000 + now.month * 100 + now.day;
+    final int index = Random(seed).nextInt(_tips.length);
+    return _tips[index];
   }
 
   @override

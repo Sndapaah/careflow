@@ -17,9 +17,13 @@ import '../widgets/gender_choice.dart';
 import '../widgets/onboarding_illustrations.dart';
 import '../widgets/option_chip.dart';
 import '../widgets/step_progress_bar.dart';
+import '../../../../core/utils/field_validators.dart';
+import '../../../../core/widgets/validated_field.dart';
 
 /// The five-step medical questionnaire new patients complete after verifying
 /// their contact. All steps share one bloc, one header and one Next action.
+bool _showsSkip(int step) => step != 0 && step != 3;
+
 class OnboardingPage extends StatelessWidget {
   const OnboardingPage({super.key});
 
@@ -42,7 +46,7 @@ class _OnboardingView extends StatelessWidget {
           p.status != c.status,
       listener: (BuildContext context, OnboardingState state) {
         if (state.status.isSuccess) {
-          context.go(AppRoutes.home);
+          context.go(AppRoutes.locationPermission);
         } else if (state.status.isFailure && state.errorMessage != null) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
@@ -75,18 +79,26 @@ class _OnboardingView extends StatelessWidget {
                       child: _StepBody(state: state, bloc: bloc),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      top: AppSpacing.md,
-                      bottom: AppSpacing.xl,
-                    ),
-                    child: GhostCardButton(
-                      label: state.isLastStep ? 'Finish' : 'Next',
-                      onPressed: state.canAdvance && !state.status.isLoading
-                          ? () => bloc.add(const OnboardingNextPressed())
-                          : null,
-                    ),
+              Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl).copyWith(
+                    top: AppSpacing.md,
+                    bottom: AppSpacing.xl,
                   ),
+                  child: _showsSkip(state.step)
+                      ? Row(
+                          children: <Widget>[
+                            Expanded(child: _SkipButton(state: state, bloc: bloc)),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(child: _NextButton(state: state, bloc: bloc)),
+                          ],
+                        )
+                      : Center(
+                          child: SizedBox(
+                            width: 240,
+                            child: _NextButton(state: state, bloc: bloc),
+                          ),
+                        ),
+                ),
                 ],
               ),
             ),
@@ -392,7 +404,7 @@ class _ContactStep extends StatelessWidget {
                 style: TextStyle(color: AppColors.accent),
               ),
               const TextSpan(
-                text: ' would like to have an emergency contact of yours.',
+                text: ' Please we will like to have an emergency contact of yours.',
               ),
             ],
           ),
@@ -401,12 +413,11 @@ class _ContactStep extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         const EmergencyContactIllustration(size: 200),
         const SizedBox(height: AppSpacing.xl),
-        AppTextField(
+        ValidatedField(
           hint: 'Full Name',
-          variant: AppFieldVariant.accent,
           textInputAction: TextInputAction.next,
-          onChanged: (String v) =>
-              bloc.add(OnboardingContactChanged(fullName: v)),
+          validator: FieldValidators.fullName,
+          onChanged: (String v) => bloc.add(OnboardingContactChanged(fullName: v)),
         ),
         const SizedBox(height: AppSpacing.md),
         AppPickerField(
@@ -416,16 +427,58 @@ class _ContactStep extends StatelessWidget {
           onTap: () => _pickRelationship(context),
         ),
         const SizedBox(height: AppSpacing.md),
-        AppTextField(
+        ValidatedField(
           hint: 'Phone Number',
-          variant: AppFieldVariant.accent,
           keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.done,
-          onChanged: (String v) =>
-              bloc.add(OnboardingContactChanged(phoneNumber: v)),
+          validator: FieldValidators.phone,
+          onChanged: (String v) => bloc.add(OnboardingContactChanged(phoneNumber: v)),
         ),
         const SizedBox(height: AppSpacing.xl),
       ],
+    );
+  }
+}
+class _NextButton extends StatelessWidget {
+  const _NextButton({required this.state, required this.bloc});
+
+  final OnboardingState state;
+  final OnboardingBloc bloc;
+
+  @override
+  Widget build(BuildContext context) {
+    final String label = state.isLastStep ? 'Finish' : 'Next';
+    final VoidCallback? onPressed = state.canAdvance && !state.status.isLoading
+        ? () => bloc.add(const OnboardingNextPressed())
+        : null;
+
+    if (state.canAdvance) {
+      return PrimaryButton(
+        label: label,
+        onPressed: onPressed,
+        isLoading: state.status.isLoading,
+        height: 48,
+      );
+    }
+
+    return SecondaryButton(label: label, onPressed: onPressed, height: 48);
+  }
+}
+
+class _SkipButton extends StatelessWidget {
+  const _SkipButton({required this.state, required this.bloc});
+
+  final OnboardingState state;
+  final OnboardingBloc bloc;
+
+  @override
+  Widget build(BuildContext context) {
+    return SecondaryButton(
+      label: state.isLastStep ? 'Skip' : 'Skip',
+      onPressed: state.status.isLoading
+          ? null
+          : () => bloc.add(const OnboardingSkipPressed()),
+      height: 48,
     );
   }
 }

@@ -99,7 +99,7 @@ class SecondaryButton extends StatelessWidget {
     this.trailingIcon,
     this.expanded = true,
     this.height = 50,
-    this.borderRadius = AppRadius.pill,
+    this.borderRadius = AppRadius.sm,
     this.foreground = AppColors.primary,
     this.background = AppColors.surface,
   });

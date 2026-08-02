@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/otp_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/legal/presentation/pages/terms_page.dart';
 import '../../features/auth/presentation/pages/verification_success_page.dart';
 import '../../features/auth/presentation/pages/welcome_page.dart';
 import '../../features/facilities/presentation/pages/emergency_page.dart';
@@ -14,6 +15,9 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/symptoms/presentation/pages/ai_analysis_page.dart';
+import '../../features/onboarding/presentation/pages/location_permission_page.dart';
+import '../../features/symptoms/domain/entities/symptom_analysis.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../view/main_shell.dart';
 import 'app_routes.dart';
 
@@ -34,6 +38,11 @@ abstract final class AppRouter {
         path: AppRoutes.register,
         builder: (_, _) => const RegisterPage(),
       ),
+      GoRoute(
+        path: AppRoutes.terms,
+        parentNavigatorKey: _rootKey,
+        builder: (_, _) => const TermsPage(),
+      ),  
       GoRoute(path: AppRoutes.otp, builder: (_, _) => const OtpPage()),
       GoRoute(
         path: AppRoutes.verified,
@@ -43,6 +52,14 @@ abstract final class AppRouter {
         path: AppRoutes.onboarding,
         builder: (_, _) => const OnboardingPage(),
       ),
+      GoRoute(
+      path: AppRoutes.onboarding,
+      builder: (_, _) => const OnboardingPage(),
+    ),
+        GoRoute(
+          path: AppRoutes.locationPermission,
+          builder: (_, _) => const LocationPermissionPage(),
+        ),
 
       // Screens that sit above the tab bar.
       GoRoute(
@@ -68,6 +85,17 @@ abstract final class AppRouter {
         builder: (_, GoRouterState state) =>
             FacilityDetailPage(facilityId: state.pathParameters['id']!),
       ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        parentNavigatorKey: _rootKey,
+        builder: (_, _) => const NotificationsPage(),
+      ),
+      GoRoute(
+  path: AppRoutes.emergency,
+  parentNavigatorKey: _rootKey,
+  builder: (_, GoRouterState state) =>
+      EmergencyPage(analysis: state.extra as SymptomAnalysis?),
+),
 
       StatefulShellRoute.indexedStack(
         builder: (_, _, StatefulNavigationShell shell) =>
@@ -101,6 +129,7 @@ abstract final class AppRouter {
               ),
             ],
           ),
+          // app_router.dart — add alongside your other pushed-over-shell routes
         ],
       ),
     ],

@@ -3,9 +3,12 @@ abstract final class AppRoutes {
   static const String welcome = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String terms = '/terms';
   static const String otp = '/otp';
   static const String verified = '/verified';
+  static const String locationPermission = '/location-permission';
   static const String onboarding = '/onboarding';
+  static const String notifications = '/notifications';
 
   // Bottom-navigation tabs.
   static const String home = '/home';

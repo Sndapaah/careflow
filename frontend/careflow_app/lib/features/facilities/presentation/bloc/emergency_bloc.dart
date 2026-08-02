@@ -5,6 +5,7 @@ import '../../../../core/bloc/bloc_status.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../../domain/entities/facility_recommendation.dart';
+import '../../../symptoms/domain/entities/symptom_analysis.dart';
 import '../../domain/usecases/facility_usecases.dart';
 
 // ----------------------------------------------------------------- events
@@ -17,7 +18,12 @@ sealed class EmergencyEvent extends Equatable {
 }
 
 final class EmergencyMatchRequested extends EmergencyEvent {
-  const EmergencyMatchRequested();
+  const EmergencyMatchRequested({this.analysis});
+
+  final SymptomAnalysis? analysis;
+
+  @override
+  List<Object?> get props => <Object?>[analysis];
 }
 
 // ------------------------------------------------------------------ state
@@ -49,22 +55,19 @@ class EmergencyBloc extends Bloc<EmergencyEvent, EmergencyState> {
   final GetEmergencyMatch _getEmergencyMatch;
 
   Future<void> _onRequested(
-    EmergencyMatchRequested event,
-    Emitter<EmergencyState> emit,
-  ) async {
-    emit(const EmergencyState(status: BlocStatus.loading));
-    try {
-      final FacilityRecommendation match = await _getEmergencyMatch(
-        const NoParams(),
-      );
-      emit(EmergencyState(status: BlocStatus.success, match: match));
-    } on Failure catch (failure) {
-      emit(
-        EmergencyState(
-          status: BlocStatus.failure,
-          errorMessage: failure.message,
-        ),
-      );
-    }
+  EmergencyMatchRequested event,
+  Emitter<EmergencyState> emit,
+) async {
+  emit(const EmergencyState(status: BlocStatus.loading));
+  try {
+    final FacilityRecommendation match = await _getEmergencyMatch(
+      const NoParams(), // still NoParams for now — see note below
+    );
+    emit(EmergencyState(status: BlocStatus.success, match: match));
+  } on Failure catch (failure) {
+    emit(
+      EmergencyState(status: BlocStatus.failure, errorMessage: failure.message),
+    );
   }
+}
 }

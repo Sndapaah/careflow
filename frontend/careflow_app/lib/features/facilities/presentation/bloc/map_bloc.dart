@@ -7,6 +7,9 @@ import '../../../../core/usecases/usecase.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/facility_recommendation.dart';
 import '../../domain/usecases/facility_usecases.dart';
+import 'package:latlong2/latlong.dart';
+import 'dart:async';
+import 'package:geolocator/geolocator.dart';
 
 /// The map sheet has two shapes: the ranked overview, and a single facility
 /// with its live telemetry and call/navigate actions.
@@ -44,6 +47,15 @@ final class MapOverviewRequested extends MapEvent {
   const MapOverviewRequested();
 }
 
+final class MapUserPositionUpdated extends MapEvent {
+  const MapUserPositionUpdated(this.position);
+
+  final LatLng position;
+
+  @override
+  List<Object?> get props => <Object?>[position];
+}
+
 // ------------------------------------------------------------------ state
 
 class MapState extends Equatable {
@@ -53,6 +65,7 @@ class MapState extends Equatable {
     this.mode = MapViewMode.overview,
     this.selectedId,
     this.errorMessage,
+    this.userPosition = const LatLng(6.6885, -1.6244), // KNUST default
   });
 
   final BlocStatus status;
@@ -60,6 +73,7 @@ class MapState extends Equatable {
   final MapViewMode mode;
   final String? selectedId;
   final String? errorMessage;
+  final LatLng userPosition;
 
   /// The highest-ranked recommendation — the card at the top of the sheet.
   FacilityRecommendation? get topMatch =>
@@ -82,6 +96,7 @@ class MapState extends Equatable {
     MapViewMode? mode,
     String? selectedId,
     String? errorMessage,
+    LatLng? userPosition,
     bool clearSelection = false,
     bool clearError = false,
   }) => MapState(
@@ -90,6 +105,7 @@ class MapState extends Equatable {
     mode: mode ?? this.mode,
     selectedId: clearSelection ? null : selectedId ?? this.selectedId,
     errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+    userPosition: userPosition ?? this.userPosition,
   );
 
   @override
@@ -111,12 +127,41 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapStarted>(_onStarted);
     on<MapFacilitySelected>(_onFacilitySelected);
     on<MapOverviewRequested>(_onOverviewRequested);
+    on<MapUserPositionUpdated>(_onUserPositionUpdated);
   }
 
   final GetRecommendations _getRecommendations;
+  StreamSubscription<Position>? _positionSub;
 
   Future<void> _onStarted(MapStarted event, Emitter<MapState> emit) async {
     emit(state.copyWith(status: BlocStatus.loading, clearError: true));
+
+    // Grab a one-off fix so the map isn't stuck on the KNUST fallback.
+try {
+  final Position position = await Geolocator.getCurrentPosition(
+    locationSettings: const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      timeLimit: Duration(seconds: 6),
+    ),
+  );
+  emit(state.copyWith(userPosition: LatLng(position.latitude, position.longitude)));
+} on TimeoutException {
+  // Keep the KNUST fallback rather than blocking on a stuck fix.
+} catch (_) {
+  // No fix available yet — keep fallback.
+}
+
+    // Then keep listening as the user moves.
+    await _positionSub?.cancel();
+    _positionSub = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 25, // meters — don't spam updates for tiny jitter
+      ),
+    ).listen((Position position) {
+      add(MapUserPositionUpdated(LatLng(position.latitude, position.longitude)));
+    });
+
     try {
       final List<FacilityRecommendation> results = await _getRecommendations(
         const NoParams(),
@@ -133,12 +178,16 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       );
     } on Failure catch (failure) {
       emit(
-        state.copyWith(
-          status: BlocStatus.failure,
-          errorMessage: failure.message,
-        ),
+        state.copyWith(status: BlocStatus.failure, errorMessage: failure.message),
       );
     }
+  }
+
+  void _onUserPositionUpdated(
+    MapUserPositionUpdated event,
+    Emitter<MapState> emit,
+  ) {
+    emit(state.copyWith(userPosition: event.position));
   }
 
   void _onFacilitySelected(MapFacilitySelected event, Emitter<MapState> emit) {
@@ -152,5 +201,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     Emitter<MapState> emit,
   ) {
     emit(state.copyWith(mode: MapViewMode.overview, clearSelection: true));
+  }
+
+  @override
+  Future<void> close() {
+    _positionSub?.cancel();
+    return super.close();
   }
 }

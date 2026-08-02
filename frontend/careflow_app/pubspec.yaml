@@ -41,6 +41,11 @@ dependencies:
   go_router: ^17.3.0
   google_fonts: ^8.2.0
   intl: ^0.20.3
+  flutter_map: ^8.1.1
+  latlong2: ^0.9.1
+  geolocator: ^13.0.2
+  http: ^1.2.2
+  printing: ^5.13.4
 
 dev_dependencies:
   flutter_test:
@@ -58,11 +63,12 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+      - assets/legal/careflow_terms_and_conditions.pdf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

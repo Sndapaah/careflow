@@ -8,17 +8,21 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_top_bar.dart';
+import '../../../symptoms/domain/entities/symptom_analysis.dart';
 import '../bloc/emergency_bloc.dart';
 import '../widgets/recommendation_card.dart';
 
 /// Single best emergency-capable facility, with a one-tap call action.
 class EmergencyPage extends StatelessWidget {
-  const EmergencyPage({super.key});
+  const EmergencyPage({super.key, this.analysis});
+
+  final SymptomAnalysis? analysis;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<EmergencyBloc>(
-      create: (_) => sl<EmergencyBloc>()..add(const EmergencyMatchRequested()),
+      create: (_) =>
+          sl<EmergencyBloc>()..add(EmergencyMatchRequested(analysis: analysis)),
       child: const _EmergencyView(),
     );
   }

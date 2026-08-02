@@ -31,6 +31,8 @@ class FacilityInMemoryDataSource implements FacilityRemoteDataSource {
     waitMinutes: 7,
     emergencies: 0,
     isEmergencyCapable: true,
+    latitude: 6.6745,
+    longitude: -1.5716,
     staffCount: 8,
     patientCapacity: 12,
     phoneNumber: '+233 32 206 0331',
@@ -51,6 +53,8 @@ class FacilityInMemoryDataSource implements FacilityRemoteDataSource {
     waitMinutes: 18,
     emergencies: 4,
     isEmergencyCapable: true,
+    latitude: 6.6746,
+    longitude: -1.5661,
     staffCount: 46,
     patientCapacity: 60,
     phoneNumber: '+233 32 206 0400',
@@ -83,6 +87,8 @@ class FacilityInMemoryDataSource implements FacilityRemoteDataSource {
     waitMinutes: 34,
     emergencies: 2,
     isEmergencyCapable: false,
+    latitude: 6.7009,
+    longitude: -1.6231,
     staffCount: 14,
     patientCapacity: 25,
     phoneNumber: '+233 32 209 1122',
@@ -110,6 +116,8 @@ class FacilityInMemoryDataSource implements FacilityRemoteDataSource {
       waitMinutes: 52,
       emergencies: 9,
       isEmergencyCapable: true,
+      latitude: 6.6886,
+      longitude: -1.6244,
     ),
     FacilityModel(
       id: 'bomso',
@@ -123,6 +131,8 @@ class FacilityInMemoryDataSource implements FacilityRemoteDataSource {
       waitMinutes: 26,
       emergencies: 1,
       isEmergencyCapable: true,
+      latitude: 6.6790,
+      longitude: -1.5850,
     ),
     FacilityModel(
       id: 'knust-hospital',
@@ -136,6 +146,8 @@ class FacilityInMemoryDataSource implements FacilityRemoteDataSource {
       waitMinutes: 18,
       emergencies: 4,
       isEmergencyCapable: true,
+      latitude: 6.6746,
+      longitude: -1.5661,
     ),
     FacilityModel(
       id: 'knust-clinic',
@@ -149,6 +161,8 @@ class FacilityInMemoryDataSource implements FacilityRemoteDataSource {
       waitMinutes: 7,
       emergencies: 0,
       isEmergencyCapable: false,
+      latitude: 6.6745,
+      longitude: -1.5716,
     ),
   ];
 

@@ -25,6 +25,8 @@ class Facility extends Equatable {
     required this.waitMinutes,
     required this.emergencies,
     required this.isEmergencyCapable,
+    required this.latitude,
+    required this.longitude,
     this.staffCount = 0,
     this.patientCapacity = 0,
     this.phoneNumber = '',
@@ -39,6 +41,9 @@ class Facility extends Equatable {
   final double distanceKm;
   final int etaMinutes;
   final FacilityLoad load;
+
+  final double latitude;
+  final double longitude;
 
   final int currentPatients;
   final int incomingPatients;

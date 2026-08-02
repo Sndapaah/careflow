@@ -42,9 +42,16 @@ class _MapView extends StatelessWidget {
 
           return Stack(
             children: <Widget>[
-              const Positioned.fill(child: MapCanvas()),
-              if (pinned != null)
-                const Positioned.fill(child: MapRouteOverlay()),
+            Positioned.fill(
+              child: MapCanvas(
+                facilities: state.recommendations
+                    .map((e) => e.facility)
+                    .toList(),
+                userPosition: state.userPosition,
+              ),
+            ), 
+            if (pinned != null)
+          
               if (pinned != null) ..._mapMarkers(context, pinned),
               _TopControls(state: state),
               if (state.status.isLoading)

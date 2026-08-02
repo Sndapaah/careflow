@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/gestures.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/di/injector.dart';
@@ -8,12 +9,13 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_buttons.dart';
-import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/careflow_logo.dart';
 import '../../../../core/widgets/social_auth_row.dart';
 import '../../domain/entities/auth_user.dart';
 import '../bloc/register_bloc.dart';
 import '../widgets/auth_footer_prompt.dart';
+import '../../../../core/utils/field_validators.dart';
+import '../../../../core/widgets/validated_field.dart';
 
 class RegisterPage extends StatelessWidget {
   const RegisterPage({super.key});
@@ -75,35 +77,35 @@ class _RegisterView extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        AppTextField(
+                        ValidatedField(
                           hint: 'Full Name',
                           textInputAction: TextInputAction.next,
-                          onChanged: (String v) =>
-                              bloc.add(RegisterFullNameChanged(v)),
+                          validator: FieldValidators.fullName,
+                          onChanged: (String v) => bloc.add(RegisterFullNameChanged(v)),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        AppTextField(
+                        ValidatedField(
                           hint: 'Email',
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
-                          onChanged: (String v) =>
-                              bloc.add(RegisterEmailChanged(v)),
+                          validator: FieldValidators.email,
+                          onChanged: (String v) => bloc.add(RegisterEmailChanged(v)),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        AppTextField(
+                        ValidatedField(
                           hint: 'Phone Number',
                           keyboardType: TextInputType.phone,
                           textInputAction: TextInputAction.next,
-                          onChanged: (String v) =>
-                              bloc.add(RegisterPhoneChanged(v)),
+                          validator: FieldValidators.phone,
+                          onChanged: (String v) => bloc.add(RegisterPhoneChanged(v)),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        AppTextField(
+                        ValidatedField(
                           hint: 'Password',
                           obscureText: true,
                           textInputAction: TextInputAction.done,
-                          onChanged: (String v) =>
-                              bloc.add(RegisterPasswordChanged(v)),
+                          validator: FieldValidators.password,
+                          onChanged: (String v) => bloc.add(RegisterPasswordChanged(v)),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         const _TermsNotice(),
@@ -154,16 +156,29 @@ class _TermsNotice extends StatelessWidget {
       color: AppColors.textPrimary,
       fontWeight: FontWeight.w600,
     );
-    final TextStyle link = base.copyWith(color: AppColors.primary);
+    final TextStyle link = base.copyWith(
+      color: AppColors.primary,
+      decoration: TextDecoration.underline,
+    );
 
     return Text.rich(
       TextSpan(
         style: base,
         children: <InlineSpan>[
           const TextSpan(text: 'By Signing Up, You Agree To The '),
-          TextSpan(text: 'Terms Of Use', style: link),
+          TextSpan(
+            text: 'Terms Of Use',
+            style: link,
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => context.push(AppRoutes.terms),
+          ),
           const TextSpan(text: ' And '),
-          TextSpan(text: 'Privacy Notice', style: link),
+          TextSpan(
+            text: 'Privacy Notice',
+            style: link,
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => context.push(AppRoutes.terms),
+          ),
         ],
       ),
     );

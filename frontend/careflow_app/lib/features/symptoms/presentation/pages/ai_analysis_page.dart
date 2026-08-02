@@ -46,7 +46,12 @@ class _AiAnalysisView extends StatelessWidget {
               subtitle: 'Based on your symptoms',
             ),
             Expanded(
-              child: BlocBuilder<SymptomAnalysisBloc, SymptomAnalysisState>(
+              child: BlocConsumer<SymptomAnalysisBloc, SymptomAnalysisState>(
+                listenWhen: (SymptomAnalysisState previous, SymptomAnalysisState current) =>
+                    current.analysis?.severity == SeverityLevel.high &&
+                    previous.analysis?.severity != SeverityLevel.high,
+                listener: (BuildContext context, SymptomAnalysisState state) =>
+                    _showEmergencyDialog(context, state.analysis!),
                 builder: (BuildContext context, SymptomAnalysisState state) {
                   if (state.status.isLoading || state.analysis == null) {
                     return const Center(child: CircularProgressIndicator());
@@ -71,6 +76,79 @@ class _AiAnalysisView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showEmergencyDialog(
+    BuildContext context,
+    SymptomAnalysis analysis,
+  ) async {
+    final bool? proceed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.danger.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                color: AppColors.danger,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Emergency Symptom Detected',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h2.copyWith(fontSize: 20),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Please stay calm, CareFlow will take care of you',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyLarge.copyWith(
+                fontStyle: FontStyle.italic,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const Divider(height: 1),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                    child: const Text('Decline'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Continue',
+                    height: 46,
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (proceed == true && context.mounted) {
+      context.push(AppRoutes.emergency, extra: analysis);
+    }
   }
 }
 

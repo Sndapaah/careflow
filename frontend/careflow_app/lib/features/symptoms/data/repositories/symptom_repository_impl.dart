@@ -14,7 +14,7 @@ class SymptomRepositoryImpl implements SymptomRepository {
     'Nausea',
     'Cough',
     'Fever',
-    'Body pain',
+    'Body pain',    
     'Dizziness',
     'Sore throat',
   ];

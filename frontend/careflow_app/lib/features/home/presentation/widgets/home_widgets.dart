@@ -9,20 +9,18 @@ import '../../../facilities/domain/entities/facility.dart';
 import '../../../symptoms/domain/entities/symptom_analysis.dart';
 import '../../domain/entities/health_tip.dart';
 
-/// Avatar, greeting and the notification bell.
+/// Avatar, greeting and the emergency trigger.
 class GreetingHeader extends StatelessWidget {
   const GreetingHeader({
     super.key,
     required this.greeting,
     required this.name,
-    required this.unreadCount,
-    this.onNotifications,
+    required this.onEmergency,
   });
 
   final String greeting;
   final String name;
-  final int unreadCount;
-  final VoidCallback? onNotifications;
+  final VoidCallback onEmergency;
 
   @override
   Widget build(BuildContext context) {
@@ -65,62 +63,31 @@ class GreetingHeader extends StatelessWidget {
             ],
           ),
         ),
-        _NotificationBell(count: unreadCount, onTap: onNotifications),
+        _EmergencyIconButton(onTap: onEmergency),
       ],
     );
   }
 }
 
-class _NotificationBell extends StatelessWidget {
-  const _NotificationBell({required this.count, this.onTap});
+class _EmergencyIconButton extends StatelessWidget {
+  const _EmergencyIconButton({required this.onTap});
 
-  final int count;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: <Widget>[
-        Material(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            child: const SizedBox(
-              width: 48,
-              height: 48,
-              child: Icon(
-                Icons.notifications_none_rounded,
-                size: 26,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
+    return Material(
+      color: AppColors.danger,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: const SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(Icons.emergency_outlined, color: Colors.white, size: 24),
         ),
-        if (count > 0)
-          Positioned(
-            top: -5,
-            right: -5,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: const BoxDecoration(
-                color: AppColors.danger,
-                shape: BoxShape.circle,
-              ),
-              constraints: const BoxConstraints(minWidth: 21, minHeight: 21),
-              alignment: Alignment.center,
-              child: Text(
-                '$count',
-                style: AppTextStyles.badge.copyWith(
-                  color: Colors.white,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }
@@ -384,6 +351,54 @@ class QuickSymptomChips extends StatelessWidget {
   }
 }
 
+/// Free-text space for anything the patient wants to add that doesn't fit
+/// the structured symptom search — context, timeline, how they're feeling.
+/// Folded into the symptoms list on analyze; not yet persisted separately.
+class AdditionalNotesField extends StatelessWidget {
+  const AdditionalNotesField({super.key, required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Additional Notes',
+          style: AppTextStyles.h2.copyWith(fontSize: 18),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: TextField(
+            controller: controller,
+            maxLines: 4,
+            minLines: 3,
+            style: AppTextStyles.bodyLarge,
+            decoration: InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.all(AppSpacing.sm),
+              hintText:
+                  'Anything else you want to mention — when it started, '
+                  'how it feels, what makes it better or worse...',
+              hintStyle: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// A previously logged symptom with its relative timestamp.
 class RecentSymptomTile extends StatelessWidget {
   const RecentSymptomTile({super.key, required this.symptom, this.onTap});
@@ -507,7 +522,6 @@ class _WaterGlassPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double s = size.shortestSide;
 
-    // Tapered tumbler.
     final Path glass = Path()
       ..moveTo(0.24 * s, 0.16 * s)
       ..lineTo(0.76 * s, 0.16 * s)
@@ -532,7 +546,6 @@ class _WaterGlassPainter extends CustomPainter {
         ..color = const Color(0xFF9CC7DE),
     );
 
-    // Leaves resting at the base.
     final Paint leaf = Paint()..color = const Color(0xFF5FBF6B);
     for (final double dx in <double>[0.10, 0.86]) {
       canvas.save();

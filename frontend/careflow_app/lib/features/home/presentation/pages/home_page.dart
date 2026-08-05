@@ -4,16 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/di/injector.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../facilities/domain/entities/facility.dart';
-import '../../../symptoms/domain/entities/symptom_analysis.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/usecases/usecase.dart';
-import '../../../../core/utils/emergency_detector.dart';
 import '../../../../core/widgets/app_buttons.dart';
+import '../../../facilities/domain/entities/facility.dart';
 import '../../../profile/domain/entities/patient_profile.dart';
 import '../../../profile/domain/usecases/profile_usecases.dart';
+import '../../../symptoms/domain/entities/symptom_analysis.dart';
 import '../bloc/home_bloc.dart';
 import '../widgets/home_widgets.dart';
 
@@ -38,79 +37,86 @@ class _HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<_HomeView> {
   final TextEditingController _symptomController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
   final FocusNode _symptomFocus = FocusNode();
 
   @override
   void dispose() {
     _symptomController.dispose();
+    _notesController.dispose();
     _symptomFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _analyze(BuildContext context, String query) async {
-  final List<String> symptoms = query
-      .split(RegExp(r'[,\n]'))
-      .map((String s) => s.trim())
-      .where((String s) => s.isNotEmpty)
-      .toList();
-  if (symptoms.isEmpty) return;
+  /// Bundles the typed symptoms with any free-text notes before handing off
+  /// to the AI analysis screen — notes ride along as one extra "symptom"
+  /// entry so the analyzer sees the full picture the patient described.
+  void _analyze(BuildContext context, String query) {
+    final List<String> symptoms = query
+        .split(RegExp(r'[,\n]'))
+        .map((String s) => s.trim())
+        .where((String s) => s.isNotEmpty)
+        .toList();
 
-  if (EmergencyDetector.isEmergency(symptoms)) {
-    await _handleEmergencyFlow(context);
-    return;
-  }
-
-  context.push(AppRoutes.analysis, extra: symptoms);
-}
-
-Future<void> _handleEmergencyFlow(BuildContext context) async {
-  final bool? proceed = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const _EmergencyDetectedDialog(),
-  );
-  if (proceed != true || !context.mounted) return;
-
-  final _EmergencyCallChoice? choice = await showDialog<_EmergencyCallChoice>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const _EmergencyCallChoiceDialog(),
-  );
-  if (!context.mounted) return;
-
-  if (choice == _EmergencyCallChoice.contact) {
-    await _callEmergencyContact(context);
-  }
-  // "Call Facility" is handled on the Emergency page itself, once the
-  // matched facility (and its number) has actually loaded.
-
-  if (context.mounted) context.push(AppRoutes.emergency);
-}
-
-Future<void> _callEmergencyContact(BuildContext context) async {
-  try {
-    final PatientProfile profile =
-        await sl<GetPatientProfile>()(const NoParams());
-    final EmergencyContact contact = profile.emergencyContact;
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('Calling ${contact.fullName} — ${contact.phoneNumber}'),
-          ),
-        );
+    final String notes = _notesController.text.trim();
+    if (notes.isNotEmpty) {
+      symptoms.add('Additional notes: $notes');
     }
-  } catch (_) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('No emergency contact on file.')),
-        );
+
+    if (symptoms.isEmpty) return;
+    context.push(AppRoutes.analysis, extra: symptoms);
+  }
+
+  Future<void> _handleEmergencyFlow(BuildContext context) async {
+    final bool? proceed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _EmergencyDetectedDialog(),
+    );
+    if (proceed != true || !context.mounted) return;
+
+    final _EmergencyCallChoice? choice = await showDialog<_EmergencyCallChoice>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _EmergencyCallChoiceDialog(),
+    );
+    if (!context.mounted) return;
+
+    if (choice == _EmergencyCallChoice.contact) {
+      await _callEmergencyContact(context);
+    }
+    // "Call Facility" is handled on the Emergency page itself, once the
+    // matched facility (and its number) has actually loaded.
+
+    if (context.mounted) context.push(AppRoutes.emergency);
+  }
+
+  Future<void> _callEmergencyContact(BuildContext context) async {
+    try {
+      final PatientProfile profile =
+          await sl<GetPatientProfile>()(const NoParams());
+      final EmergencyContact contact = profile.emergencyContact;
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                'Calling ${contact.fullName} — ${contact.phoneNumber}',
+              ),
+            ),
+          );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(content: Text('No emergency contact on file.')),
+          );
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -140,8 +146,7 @@ Future<void> _callEmergencyContact(BuildContext context) async {
                     child: GreetingHeader(
                       greeting: state.greeting,
                       name: state.patientName,
-                      unreadCount: state.unreadNotifications,
-                      onNotifications: () => context.push(AppRoutes.notifications),
+                      onEmergency: () => _handleEmergencyFlow(context),
                     ),
                   ),
                   const _SectionTitle('Nearby Health Facilities'),
@@ -177,6 +182,11 @@ Future<void> _callEmergencyContact(BuildContext context) async {
                     },
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  Padding(
+                    padding: AppSpacing.page,
+                    child: AdditionalNotesField(controller: _notesController),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   const _SectionTitle('Recent Symptoms'),
                   const SizedBox(height: AppSpacing.sm),
                   for (final RecentSymptom symptom in state.recentSymptoms)
@@ -187,10 +197,7 @@ Future<void> _callEmergencyContact(BuildContext context) async {
                         AppSpacing.gutter,
                         AppSpacing.xs,
                       ),
-                      child: RecentSymptomTile(
-                        symptom: symptom,
-                      //  onTap: () => _analyze(context, symptom.label),
-                      ),
+                      child: RecentSymptomTile(symptom: symptom),
                     ),
                   const SizedBox(height: AppSpacing.md),
                   if (state.tip != null)
@@ -221,6 +228,7 @@ class _SectionTitle extends StatelessWidget {
     );
   }
 }
+
 enum _EmergencyCallChoice { contact, facility }
 
 class _EmergencyDetectedDialog extends StatelessWidget {
@@ -301,11 +309,15 @@ class _EmergencyDialogShell extends StatelessWidget {
               color: AppColors.danger.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.error_outline, color: AppColors.danger, size: 34),
+            child: const Icon(
+              Icons.error_outline,
+              color: AppColors.danger,
+              size: 34,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
-            'Emergency Symptom Detected',
+            'Emergency Button Triggered',
             textAlign: TextAlign.center,
             style: AppTextStyles.h2.copyWith(fontSize: 20),
           ),

@@ -147,7 +147,7 @@ class _AiAnalysisView extends StatelessWidget {
     );
 
     if (proceed == true && context.mounted) {
-      context.push(AppRoutes.emergency, extra: analysis);
+      await context.push(AppRoutes.emergency, extra: analysis);
     }
   }
 }

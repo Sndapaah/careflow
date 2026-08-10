@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../features/facilities/presentation/bloc/map_bloc.dart';
 
 /// Scaffold shared by the three root tabs. Each branch keeps its own
 /// navigation stack, so switching tabs preserves where the patient was.
@@ -16,6 +18,23 @@ class MainShell extends StatelessWidget {
     _TabSpec(icon: Icons.location_on, label: 'Map'),
     _TabSpec(icon: Icons.person, label: 'Profile'),
   ];
+
+  void _onTabTapped(BuildContext context, int index) {
+    // FIXED: Clean state reset check triggering on active Map tab clicks 
+    // using direct context providers available in the parent shell layout.
+    if (index == 1 && index == navigationShell.currentIndex) {
+      try {
+        context.read<MapBloc>().add(const MapOverviewRequested());
+      } catch (_) {
+        // Safe fall-through if the bloc provider tree hasn't mounted completely
+      }
+    }
+
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +56,7 @@ class MainShell extends StatelessWidget {
                     child: _NavItem(
                       spec: _tabs[i],
                       isSelected: navigationShell.currentIndex == i,
-                      onTap: () => navigationShell.goBranch(
-                        i,
-                        initialLocation: i == navigationShell.currentIndex,
-                      ),
+                      onTap: () => _onTabTapped(context, i),
                     ),
                   ),
               ],

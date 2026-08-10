@@ -74,8 +74,6 @@ class CapacityRow extends StatelessWidget {
   const CapacityRow({super.key, required this.facility, required this.order});
 
   final Facility facility;
-
-  /// The designs order these differently on the two sheet variants.
   final List<CapacityMetric> order;
 
   @override
@@ -155,7 +153,6 @@ class WaitAndEmergenciesRow extends StatelessWidget {
 }
 
 extension on Facility {
-  /// The sheet writes the wait in the "7 mins" form rather than "7 min".
   String get etaLabelForWait => '$waitMinutes mins';
 }
 
@@ -198,7 +195,6 @@ class TopMatchHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.xs),
-        // Bounded so the FittedBoxes below have something to scale against.
         SizedBox(
           width: 110,
           child: Column(
@@ -330,8 +326,10 @@ class _GlyphCard extends StatelessWidget {
   }
 }
 
-/// Soft blue square button carrying just an icon.
-class _TintedActionButton extends StatelessWidget {
+/// Soft blue square button carrying just an icon. Briefly disables itself
+/// and shows a spinner after each tap so rapid double-taps can't fire the
+/// same action (call, navigate) twice in a row.
+class _TintedActionButton extends StatefulWidget {
   const _TintedActionButton({
     required this.icon,
     required this.onTap,
@@ -343,17 +341,45 @@ class _TintedActionButton extends StatelessWidget {
   final double? width;
 
   @override
+  State<_TintedActionButton> createState() => _TintedActionButtonState();
+}
+
+class _TintedActionButtonState extends State<_TintedActionButton> {
+  bool _busy = false;
+
+  Future<void> _handleTap() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    widget.onTap();
+    // Brief cooldown — long enough to block a double-tap, short enough that
+    // a genuine second action (e.g. re-tapping Navigate later) isn't stuck.
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    if (mounted) setState(() => _busy = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.primarySoft,
       borderRadius: BorderRadius.circular(AppRadius.sm),
       child: InkWell(
-        onTap: onTap,
+        onTap: _busy ? null : _handleTap,
         borderRadius: BorderRadius.circular(AppRadius.sm),
         child: SizedBox(
-          width: width,
+          width: widget.width,
           height: 60,
-          child: Icon(icon, size: 30, color: AppColors.primary),
+          child: _busy
+              ? const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+                )
+              : Icon(widget.icon, size: 30, color: AppColors.primary),
         ),
       ),
     );
@@ -370,8 +396,6 @@ class RankedFacilityTile extends StatelessWidget {
   });
 
   final FacilityRecommendation recommendation;
-
-  /// One-based position shown in the cyan bubble.
   final int rank;
   final VoidCallback onTap;
 

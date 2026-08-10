@@ -1,0 +1,7 @@
+models/
+*.onnx
+*.pt
+*.pth
+*.joblib
+*.pkl
+.env

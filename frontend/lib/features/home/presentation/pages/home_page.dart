@@ -39,15 +39,43 @@ class _HomeViewState extends State<_HomeView> {
   final TextEditingController _symptomController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final FocusNode _symptomFocus = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+
+  /// Drives the morphing top bar's fade. Kept as a [ValueNotifier] so scrolling
+  /// only rebuilds the slim bar, not the whole feed.
+  final ValueNotifier<double> _barProgress = ValueNotifier<double>(0);
 
   static const int _recentSymptomsPreviewCount = 3;
+
+  /// Scroll offsets (px) between which the top bar fades from hidden to shown.
+  /// [_morphStart] gives the hero greeting a little breathing room before the
+  /// bar begins to appear; by [_morphEnd] the hero has scrolled away and the
+  /// bar is fully solid.
+  static const double _morphStart = 48;
+  static const double _morphEnd = 128;
+
   bool _showAllRecentSymptoms = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final double raw =
+        (_scrollController.offset - _morphStart) / (_morphEnd - _morphStart);
+    _barProgress.value = raw.clamp(0.0, 1.0);
+  }
 
   @override
   void dispose() {
     _symptomController.dispose();
     _notesController.dispose();
     _symptomFocus.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _barProgress.dispose();
     super.dispose();
   }
 
@@ -86,7 +114,7 @@ class _HomeViewState extends State<_HomeView> {
       await _callEmergencyContact(context);
     }
 
-    if (context.mounted) context.push(AppRoutes.emergency);
+    if (context.mounted) await context.push(AppRoutes.emergency);
   }
 
   Future<void> _callEmergencyContact(BuildContext context) async {
@@ -136,11 +164,14 @@ class _HomeViewState extends State<_HomeView> {
                     ? state.recentSymptoms
                     : state.recentSymptoms.take(_recentSymptomsPreviewCount).toList();
 
-            return RefreshIndicator(
-              onRefresh: () async => bloc.add(const HomeStarted()),
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-                children: <Widget>[
+            return Stack(
+              children: <Widget>[
+                RefreshIndicator(
+                  onRefresh: () async => bloc.add(const HomeStarted()),
+                  child: ListView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                    children: <Widget>[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.gutter,
@@ -156,11 +187,19 @@ class _HomeViewState extends State<_HomeView> {
                   ),
                   const _SectionTitle('Nearby Health Facilities'),
                   const SizedBox(height: AppSpacing.sm),
-                  NearbyFacilitiesStrip(
-                    facilities: state.nearby,
-                    onSelect: (Facility facility) =>
-                        context.push(AppRoutes.facilityDetail(facility.id)),
-                  ),
+                  if (state.nearby.isNotEmpty)
+                    NearbyFacilitiesStrip(
+                      facilities: state.nearby,
+                      onSelect: (Facility facility) =>
+                          context.push(AppRoutes.facilityDetail(facility.id)),
+                    )
+                  else if (state.isLoadingNearby)
+                    const SizedBox(
+                      height: 178,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else
+                    const _NearbyEmpty(),
                   const SizedBox(height: AppSpacing.md),
                   Padding(
                     padding: AppSpacing.page,
@@ -233,8 +272,24 @@ class _HomeViewState extends State<_HomeView> {
                         ),
                       ),
                     ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _barProgress,
+                    builder: (BuildContext context, double progress, _) =>
+                        MorphingTopBar(
+                          progress: progress,
+                          name: state.patientName,
+                          onEmergency: () => _handleEmergencyFlow(context),
+                        ),
+                  ),
+                ),
+              ],
             );
           },
         ),
@@ -253,6 +308,44 @@ class _SectionTitle extends StatelessWidget {
     return Padding(
       padding: AppSpacing.page,
       child: Text(title, style: AppTextStyles.h2.copyWith(fontSize: 21)),
+    );
+  }
+}
+
+/// Shown when the nearby-facilities read finished but returned nothing (empty
+/// collection, or the request failed). Keeps the layout stable and nudges the
+/// user to retry instead of leaving a blank gap.
+class _NearbyEmpty extends StatelessWidget {
+  const _NearbyEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 178,
+      child: Center(
+        child: Padding(
+          padding: AppSpacing.page,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Icon(
+                Icons.location_off_outlined,
+                color: AppColors.textMuted,
+                size: 32,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'No facilities found nearby right now.\nPull down to refresh.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

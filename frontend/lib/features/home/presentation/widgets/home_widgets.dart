@@ -74,18 +74,108 @@ class _EmergencyIconButton extends StatelessWidget {
 
   final VoidCallback onTap;
 
+  /// Explains what the red button does. Shown on long-press (mobile) or hover
+  /// (web/desktop), and read aloud by screen readers via [Tooltip]'s built-in
+  /// semantics — so the emergency action is discoverable, not just a mystery
+  /// red circle.
+  static const String tooltip =
+      'Emergency help — get immediate assistance by calling your emergency '
+      'contact or the nearest capable facility.';
+
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.danger,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: const SizedBox(
-          width: 48,
-          height: 48,
-          child: Icon(Icons.emergency_outlined, color: Colors.white, size: 24),
+    return Tooltip(
+      message: tooltip,
+      preferBelow: true,
+      child: Material(
+        color: AppColors.danger,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: const SizedBox(
+            width: 48,
+            height: 48,
+            child: Icon(
+              Icons.emergency_outlined,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A slim bar that floats above the home feed and *morphs* into view as the
+/// user scrolls. At the top of the page [progress] is 0 and the bar is fully
+/// transparent (the hero [GreetingHeader] and its own emergency button are
+/// what's visible). As the hero scrolls away [progress] climbs to 1 and this
+/// bar fades in — a solid surface carrying a compact "Hi, {name}" and a pinned
+/// emergency button, so the emergency action stays reachable at any scroll
+/// position. The button here triggers the exact same [onEmergency] flow as the
+/// hero's, which is also what the AI symptom checker calls when it detects a
+/// high-severity ("emergency") symptom.
+class MorphingTopBar extends StatelessWidget {
+  const MorphingTopBar({
+    super.key,
+    required this.progress,
+    required this.name,
+    required this.onEmergency,
+  });
+
+  /// 0.0 = pinned at the top (hidden), 1.0 = scrolled (fully shown).
+  final double progress;
+  final String name;
+  final VoidCallback onEmergency;
+
+  static const double height = 60;
+
+  @override
+  Widget build(BuildContext context) {
+    final double p = progress.clamp(0.0, 1.0);
+
+    return IgnorePointer(
+      // While the bar is (almost) invisible, let taps fall through to the
+      // hero greeting's own emergency button underneath.
+      ignoring: p < 0.5,
+      child: Opacity(
+        opacity: p,
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            boxShadow: AppShadows.subtle,
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  color: AppColors.primarySurface,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Hi, $name',
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.h3.copyWith(fontSize: 18),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _EmergencyIconButton(onTap: onEmergency),
+            ],
+          ),
         ),
       ),
     );

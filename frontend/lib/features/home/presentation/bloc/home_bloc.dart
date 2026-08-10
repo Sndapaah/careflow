@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/bloc/bloc_status.dart';
-import '../../../../core/error/failure.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../../../facilities/domain/entities/facility.dart';
 import '../../../facilities/domain/usecases/facility_usecases.dart';
@@ -57,6 +56,7 @@ class HomeState extends Equatable {
     this.tip,
     this.symptomQuery = '',
     this.errorMessage,
+    this.isLoadingNearby = false,
   });
 
   final BlocStatus status;
@@ -68,6 +68,10 @@ class HomeState extends Equatable {
   final HealthTip? tip;
   final String symptomQuery;
   final String? errorMessage;
+
+  /// True while the nearby-facilities network read is still in flight, so the
+  /// strip can show its own loader without blocking the rest of the page.
+  final bool isLoadingNearby;
 
   bool get canAnalyze => symptomQuery.trim().isNotEmpty;
 
@@ -90,6 +94,7 @@ class HomeState extends Equatable {
     String? symptomQuery,
     String? errorMessage,
     bool clearError = false,
+    bool? isLoadingNearby,
   }) => HomeState(
     status: status ?? this.status,
     patientName: patientName ?? this.patientName,
@@ -100,6 +105,7 @@ class HomeState extends Equatable {
     tip: tip ?? this.tip,
     symptomQuery: symptomQuery ?? this.symptomQuery,
     errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+    isLoadingNearby: isLoadingNearby ?? this.isLoadingNearby,
   );
 
   @override
@@ -113,6 +119,7 @@ class HomeState extends Equatable {
     tip,
     symptomQuery,
     errorMessage,
+    isLoadingNearby,
   ];
 }
 
@@ -152,33 +159,57 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   Future<void> _onStarted(HomeStarted event, Emitter<HomeState> emit) async {
     emit(state.copyWith(status: BlocStatus.loading, clearError: true));
 
-    try {
-      // Independent reads — run them together rather than in sequence.
-      final List<Object> results = await Future.wait(<Future<Object>>[
-        _getNearbyFacilities(const NoParams()),
-        _getQuickSymptoms(const NoParams()),
-        _getRecentSymptoms(const NoParams()),
-        _getDailyTip(const NoParams()),
-        _getUnreadNotificationCount(const NoParams()),
-      ]);
+    // Phase 1 — local, instant reads (tip, quick symptoms, notification count).
+    // Emit these straight away so the page paints immediately instead of
+    // waiting behind the slower network calls below.
+    final List<String> quickSymptoms =
+        await _guard(() => _getQuickSymptoms(const NoParams()), const <String>[]);
+    final HealthTip? tip =
+        await _guard<HealthTip?>(() => _getDailyTip(const NoParams()), null);
+    final int unread =
+        await _guard(() => _getUnreadNotificationCount(const NoParams()), 0);
 
-      emit(
-        state.copyWith(
-          status: BlocStatus.success,
-          nearby: results[0] as List<Facility>,
-          quickSymptoms: results[1] as List<String>,
-          recentSymptoms: results[2] as List<RecentSymptom>,
-          tip: results[3] as HealthTip,
-          unreadNotifications: results[4] as int,
-        ),
-      );
-    } on Failure catch (failure) {
-      emit(
-        state.copyWith(
-          status: BlocStatus.failure,
-          errorMessage: failure.message,
-        ),
-      );
+    emit(
+      state.copyWith(
+        status: BlocStatus.success,
+        quickSymptoms: quickSymptoms,
+        tip: tip,
+        unreadNotifications: unread,
+        isLoadingNearby: true,
+      ),
+    );
+
+    // Phase 2 — network reads. Each is guarded on its own so a slow, failing,
+    // or malformed response degrades just its section (to empty) instead of
+    // freezing the whole screen or leaving the bloc stuck on the spinner.
+    final List<Object?> results = await Future.wait(<Future<Object?>>[
+      _guard<List<Facility>>(
+        () => _getNearbyFacilities(const NoParams()),
+        const <Facility>[],
+      ),
+      _guard<List<RecentSymptom>>(
+        () => _getRecentSymptoms(const NoParams()),
+        const <RecentSymptom>[],
+      ),
+    ]);
+
+    emit(
+      state.copyWith(
+        nearby: results[0] as List<Facility>,
+        recentSymptoms: results[1] as List<RecentSymptom>,
+        isLoadingNearby: false,
+      ),
+    );
+  }
+
+  /// Runs [run] and swallows any error, returning [fallback] instead. Keeps a
+  /// single failing read from taking down the whole home screen — every read
+  /// here is optional to the page rendering.
+  Future<T> _guard<T>(Future<T> Function() run, T fallback) async {
+    try {
+      return await run();
+    } catch (_) {
+      return fallback;
     }
   }
 }

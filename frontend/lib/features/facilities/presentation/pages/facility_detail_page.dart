@@ -10,6 +10,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_buttons.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_top_bar.dart';
+import '../../../../core/widgets/hospital_glyph.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../domain/entities/facility.dart';
 import '../bloc/facility_detail_bloc.dart';
@@ -61,13 +62,30 @@ class _FacilityDetailView extends StatelessWidget {
   }
 }
 
-class _DetailBody extends StatelessWidget {
+class _DetailBody extends StatefulWidget {
   const _DetailBody({required this.facility});
 
   final Facility facility;
 
   @override
+  State<_DetailBody> createState() => _DetailBodyState();
+}
+
+class _DetailBodyState extends State<_DetailBody> {
+  bool _navigating = false;
+
+  void _handleNavigate(BuildContext context) {
+    if (_navigating) return;
+    setState(() => _navigating = true);
+    context.go(AppRoutes.mapFocused(widget.facility.id));
+    // No need to reset _navigating — context.go replaces this route, so
+    // this widget is disposed rather than left in a stuck loading state.
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final Facility facility = widget.facility;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
@@ -76,7 +94,7 @@ class _DetailBody extends StatelessWidget {
         AppSpacing.xl,
       ),
       children: <Widget>[
-        const _PhotoPlaceholder(),
+        const _FacilityPhoto(),
         const SizedBox(height: AppSpacing.md),
         _HighlightChips(facility: facility),
         const SizedBox(height: AppSpacing.lg),
@@ -130,30 +148,27 @@ class _DetailBody extends StatelessWidget {
           icon: Icons.near_me_outlined,
           height: 60,
           borderRadius: AppRadius.pill,
-          onPressed: () => context.go(AppRoutes.mapFocused(facility.id)),
+          isLoading: _navigating,
+          onPressed: _navigating ? null : () => _handleNavigate(context),
         ),
       ],
     );
   }
 }
 
-/// Stands in for the facility photograph until the media endpoint exists.
-class _PhotoPlaceholder extends StatelessWidget {
-  const _PhotoPlaceholder();
+/// Header photograph for the facility.
+class _FacilityPhoto extends StatelessWidget {
+  const _FacilityPhoto();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 190,
-      decoration: BoxDecoration(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Container(
+        height: 190,
         color: AppColors.accentSoft,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      alignment: Alignment.center,
-      child: const Icon(
-        Icons.image_rounded,
-        size: 110,
-        color: Color(0xFF15D2F5),
+        alignment: Alignment.center,
+        child: const HospitalGlyph(size: 120),
       ),
     );
   }

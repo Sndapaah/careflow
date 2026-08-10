@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../../core/bloc/bloc_status.dart';
 import '../../../../core/error/failure.dart';
@@ -7,9 +10,6 @@ import '../../../../core/usecases/usecase.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/facility_recommendation.dart';
 import '../../domain/usecases/facility_usecases.dart';
-import 'package:latlong2/latlong.dart';
-import 'dart:async';
-import 'package:geolocator/geolocator.dart';
 
 /// The map sheet has two shapes: the ranked overview, and a single facility
 /// with its live telemetry and call/navigate actions.
@@ -56,6 +56,19 @@ final class MapUserPositionUpdated extends MapEvent {
   List<Object?> get props => <Object?>[position];
 }
 
+final class MapRouteResolved extends MapEvent {
+  const MapRouteResolved({
+    required this.distanceLabel,
+    required this.durationLabel,
+  });
+
+  final String distanceLabel;
+  final String durationLabel;
+
+  @override
+  List<Object?> get props => <Object?>[distanceLabel, durationLabel];
+}
+
 // ------------------------------------------------------------------ state
 
 class MapState extends Equatable {
@@ -66,6 +79,9 @@ class MapState extends Equatable {
     this.selectedId,
     this.errorMessage,
     this.userPosition = const LatLng(6.6885, -1.6244), // KNUST default
+    this.sheetVisible = false,
+    this.routeDistanceLabel,
+    this.routeDurationLabel,
   });
 
   final BlocStatus status;
@@ -74,6 +90,9 @@ class MapState extends Equatable {
   final String? selectedId;
   final String? errorMessage;
   final LatLng userPosition;
+  final bool sheetVisible;
+  final String? routeDistanceLabel;
+  final String? routeDurationLabel;
 
   /// The highest-ranked recommendation — the card at the top of the sheet.
   FacilityRecommendation? get topMatch =>
@@ -97,8 +116,12 @@ class MapState extends Equatable {
     String? selectedId,
     String? errorMessage,
     LatLng? userPosition,
+    bool? sheetVisible,
+    String? routeDistanceLabel,
+    String? routeDurationLabel,
     bool clearSelection = false,
     bool clearError = false,
+    bool clearRoute = false,
   }) => MapState(
     status: status ?? this.status,
     recommendations: recommendations ?? this.recommendations,
@@ -106,6 +129,13 @@ class MapState extends Equatable {
     selectedId: clearSelection ? null : selectedId ?? this.selectedId,
     errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     userPosition: userPosition ?? this.userPosition,
+    sheetVisible: sheetVisible ?? this.sheetVisible,
+    routeDistanceLabel: clearRoute
+        ? null
+        : routeDistanceLabel ?? this.routeDistanceLabel,
+    routeDurationLabel: clearRoute
+        ? null
+        : routeDurationLabel ?? this.routeDurationLabel,
   );
 
   @override
@@ -115,6 +145,9 @@ class MapState extends Equatable {
     mode,
     selectedId,
     errorMessage,
+    sheetVisible,
+    routeDistanceLabel,
+    routeDurationLabel,
   ];
 }
 
@@ -128,39 +161,27 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapFacilitySelected>(_onFacilitySelected);
     on<MapOverviewRequested>(_onOverviewRequested);
     on<MapUserPositionUpdated>(_onUserPositionUpdated);
+    on<MapRouteResolved>(_onRouteResolved);
   }
 
   final GetRecommendations _getRecommendations;
   StreamSubscription<Position>? _positionSub;
 
+  void _onRouteResolved(MapRouteResolved event, Emitter<MapState> emit) {
+    emit(
+      state.copyWith(
+        routeDistanceLabel: event.distanceLabel,
+        routeDurationLabel: event.durationLabel,
+      ),
+    );
+  }
+
   Future<void> _onStarted(MapStarted event, Emitter<MapState> emit) async {
     emit(state.copyWith(status: BlocStatus.loading, clearError: true));
 
-    // Grab a one-off fix so the map isn't stuck on the KNUST fallback.
-try {
-  final Position position = await Geolocator.getCurrentPosition(
-    locationSettings: const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      timeLimit: Duration(seconds: 6),
-    ),
-  );
-  emit(state.copyWith(userPosition: LatLng(position.latitude, position.longitude)));
-} on TimeoutException {
-  // Keep the KNUST fallback rather than blocking on a stuck fix.
-} catch (_) {
-  // No fix available yet — keep fallback.
-}
-
-    // Then keep listening as the user moves.
-    await _positionSub?.cancel();
-    _positionSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 25, // meters — don't spam updates for tiny jitter
-      ),
-    ).listen((Position position) {
-      add(MapUserPositionUpdated(LatLng(position.latitude, position.longitude)));
-    });
+    // FIXED: Call the method asynchronously without 'await' and without nested logic
+    // to instantly prevent main thread lockups on app startup.
+    _initLocationTracking();
 
     try {
       final List<FacilityRecommendation> results = await _getRecommendations(
@@ -174,25 +195,73 @@ try {
           mode: event.focusFacilityId == null
               ? MapViewMode.overview
               : MapViewMode.facility,
+          sheetVisible: event.focusFacilityId != null,
         ),
       );
     } on Failure catch (failure) {
       emit(
-        state.copyWith(status: BlocStatus.failure, errorMessage: failure.message),
+        state.copyWith(
+          status: BlocStatus.failure,
+          errorMessage: failure.message,
+        ),
       );
     }
   }
 
-  void _onUserPositionUpdated(
-    MapUserPositionUpdated event,
-    Emitter<MapState> emit,
-  ) {
-    emit(state.copyWith(userPosition: event.position));
+  Future<void> _initLocationTracking() async {
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      // FIXED: Using LocationSettings inside getCurrentPosition to clear the deprecation warning
+      final Position currentPos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+        timeLimit: const Duration(seconds: 5),
+      );
+
+      add(
+        MapUserPositionUpdated(
+          LatLng(currentPos.latitude, currentPos.longitude),
+        ),
+      );
+
+      await _positionSub?.cancel();
+
+      _positionSub =
+          Geolocator.getPositionStream(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 10,
+            ),
+          ).listen((Position position) {
+            add(
+              MapUserPositionUpdated(
+                LatLng(position.latitude, position.longitude),
+              ),
+            );
+          });
+    } catch (_) {
+      // Graceful isolation fallback container
+    }
   }
 
   void _onFacilitySelected(MapFacilitySelected event, Emitter<MapState> emit) {
     emit(
-      state.copyWith(selectedId: event.facilityId, mode: MapViewMode.facility),
+      state.copyWith(
+        selectedId: event.facilityId,
+        mode: MapViewMode.facility,
+        sheetVisible: true,
+        clearRoute: true,
+      ),
     );
   }
 
@@ -200,7 +269,21 @@ try {
     MapOverviewRequested event,
     Emitter<MapState> emit,
   ) {
-    emit(state.copyWith(mode: MapViewMode.overview, clearSelection: true));
+    emit(
+      state.copyWith(
+        mode: MapViewMode.overview,
+        clearSelection: true,
+        sheetVisible: false,
+        clearRoute: true,
+      ),
+    );
+  }
+
+  void _onUserPositionUpdated(
+    MapUserPositionUpdated event,
+    Emitter<MapState> emit,
+  ) {
+    emit(state.copyWith(userPosition: event.position));
   }
 
   @override

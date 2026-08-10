@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -14,6 +15,10 @@ class ApiClient {
 
   final http.Client _client;
   final TokenStorage _tokenStorage;
+
+  /// A request that hasn't come back within this window is treated as a
+  /// network failure rather than being left to hang the caller forever.
+  static const Duration _timeout = Duration(seconds: 12);
 
   Future<Map<String, dynamic>> post(
     String path, {
@@ -44,17 +49,20 @@ class ApiClient {
 
     http.Response response;
     try {
-      response = method == 'GET'
-          ? await _client.get(uri, headers: headers)
-          : await _client.post(
-              uri,
-              headers: headers,
-              body: body == null ? null : jsonEncode(body),
-            );
+      response = await (method == 'GET'
+              ? _client.get(uri, headers: headers)
+              : _client.post(
+                  uri,
+                  headers: headers,
+                  body: body == null ? null : jsonEncode(body),
+                ))
+          .timeout(_timeout);
     } on SocketException {
       throw const NetworkFailure();
     } on http.ClientException {
       throw const NetworkFailure();
+    } on TimeoutException {
+      throw const NetworkFailure('The server took too long to respond.');
     }
 
     final Map<String, dynamic> decoded = response.body.isEmpty

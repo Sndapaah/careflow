@@ -1,3 +1,4 @@
+import '../../../../core/error/failure.dart';
 import '../../domain/entities/auth_user.dart';
 
 class AuthUserModel extends AuthUser {
@@ -25,18 +26,29 @@ class AuthUserModel extends AuthUser {
   factory AuthUserModel.fromBackendJson(
     Map<String, dynamic> json, {
     bool isVerified = false,
-  }) => AuthUserModel(
-    id: json['_id'] as String? ?? json['id'] as String,
-    fullName: json['fullname'] as String? ?? '',
-    email: json['email'] as String? ?? '',
-    phoneNumber: json['contact'] as String? ?? '',
-    isVerified: isVerified,
-    // Backend has no explicit "onboarding complete" flag; birthdate/gender
-    // are only ever set via addPersonalization, so their presence is a
-    // reasonable stand-in until the backend adds a real flag.
-    hasCompletedOnboarding:
-        json['birthdate'] != null && json['gender'] != null,
-  );
+  }) {
+    final Object? rawId = json['_id'] ?? json['id'];
+    if (rawId is! String || rawId.isEmpty) {
+      final Object? rawMessage = json['message'] ?? json['error'];
+      final String message = rawMessage is String && rawMessage.isNotEmpty
+          ? rawMessage
+          : 'The server returned an invalid user response.';
+      throw AuthFailure(message);
+    }
+
+    return AuthUserModel(
+      id: rawId,
+      fullName: json['fullname'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      phoneNumber: json['contact'] as String? ?? '',
+      isVerified: isVerified,
+      // Backend has no explicit "onboarding complete" flag; birthdate/gender
+      // are only ever set via addPersonalization, so their presence is a
+      // reasonable stand-in until the backend adds a real flag.
+      hasCompletedOnboarding:
+          json['birthdate'] != null && json['gender'] != null,
+    );
+  }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'id': id,

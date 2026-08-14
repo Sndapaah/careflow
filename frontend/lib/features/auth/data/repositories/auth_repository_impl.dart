@@ -2,6 +2,7 @@ import '../../../../core/error/failure.dart';
 import '../../domain/entities/auth_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   const AuthRepositoryImpl(this._remote);
@@ -45,12 +46,23 @@ class AuthRepositoryImpl implements AuthRepository {
 
   /// Lets domain failures through untouched and converts anything else into
   /// a [ServerFailure], so callers only ever see [Failure].
+  // Future<T> _guard<T>(Future<T> Function() action) async {
+  //   try {
+  //     return await action();
+  //   } on Failure {
+  //     rethrow;
+  //   } catch (_) {
+  //     throw const ServerFailure();
+  //   }
+  // }
   Future<T> _guard<T>(Future<T> Function() action) async {
     try {
       return await action();
     } on Failure {
       rethrow;
-    } catch (_) {
+    } catch (e, stackTrace) {
+      debugPrint('AUTH ERROR: $e');
+      debugPrint('STACK: $stackTrace');
       throw const ServerFailure();
     }
   }

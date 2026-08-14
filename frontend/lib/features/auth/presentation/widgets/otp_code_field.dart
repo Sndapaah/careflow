@@ -91,14 +91,15 @@ class _OtpCodeFieldState extends State<OtpCodeField> {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: List<Widget>.generate(widget.length, (int index) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 5),
-          child: _OtpBox(
-            controller: _controllers[index],
-            focusNode: _nodes[index],
-            onChanged: (String value) => _handleChanged(index, value),
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: _OtpBox(
+              controller: _controllers[index],
+              focusNode: _nodes[index],
+              onChanged: (String value) => _handleChanged(index, value),
+            ),
           ),
         );
       }),
@@ -119,34 +120,36 @@ class _OtpBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      height: 62,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.xs),
-        border: Border.all(color: AppColors.accent, width: 1.4),
-        boxShadow: AppShadows.subtle,
-      ),
-      alignment: Alignment.center,
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        onChanged: onChanged,
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        inputFormatters: <TextInputFormatter>[
-          FilteringTextInputFormatter.digitsOnly,
-        ],
-        style: AppTextStyles.display.copyWith(fontSize: 30),
-        cursorColor: AppColors.accent,
-        decoration: const InputDecoration(
-          counterText: '',
-          filled: false,
-          border: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
+    return AspectRatio(
+      aspectRatio: 0.82, // roughly matches your old 52x62 proportions
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.xs),
+          border: Border.all(color: AppColors.accent, width: 1.4),
+          boxShadow: AppShadows.subtle,
+        ),
+        alignment: Alignment.center,
+        child: TextField(
+          controller: controller,
+          focusNode: focusNode,
+          onChanged: onChanged,
+          textAlign: TextAlign.center,
+          keyboardType: TextInputType.number,
+          maxLength: 1,
+          inputFormatters: <TextInputFormatter>[
+            FilteringTextInputFormatter.digitsOnly,
+          ],
+          style: AppTextStyles.display.copyWith(fontSize: 26),
+          cursorColor: AppColors.accent,
+          decoration: const InputDecoration(
+            counterText: '',
+            filled: false,
+            border: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            contentPadding: EdgeInsets.zero,
+          ),
         ),
       ),
     );

@@ -44,7 +44,7 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
     List<String> conditions = const <String>[];
     List<String> allergies = const <String>[];
     try {
-//      final PatientProfile profile = await _profile.getPatientProfile();
+      //      final PatientProfile profile = await _profile.getPatientProfile();
       final PatientProfile profile = await _profile.getProfile();
       age = DateTime.now().difference(profile.dateOfBirth).inDays ~/ 365;
       sex = profile.gender.name;
@@ -57,6 +57,7 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
     final Map<String, dynamic> json = await _api.post(
       '/diagnosis/diagnose',
       authenticated: true,
+      timeout: const Duration(seconds: 60),
       body: <String, dynamic>{
         'age': age,
         'sex': sex,
@@ -79,9 +80,11 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
     final List<dynamic> hospitalsJson =
         json['recommended_hospitals'] as List<dynamic>? ?? <dynamic>[];
 
-    final List<FacilityRecommendation> recommendations =
-        _mapHospitals(hospitalsJson);
+    final List<FacilityRecommendation> recommendations = _mapHospitals(
+      hospitalsJson,
+    );
     if (recommendations.isNotEmpty) _cache.store(recommendations);
+    _cache.markDiagnosisCompleted();
 
     return _mapAnalysis(symptoms, analysis);
   }
@@ -95,11 +98,16 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
 
     final List<PossibleCondition> conditions = conditionsJson.map((dynamic c) {
       final Map<String, dynamic> map = c as Map<String, dynamic>;
-      final String name = (map['name'] ?? map['condition'] ?? 'Unknown') as String;
-      final num confidence = (map['confidence'] as num?) ?? 50;
+      final String name =
+          (map['name'] ?? map['condition'] ?? 'Unknown') as String;
+      final num probability =
+          (map['confidence'] as num?) ?? (map['probability'] as num?) ?? 0.5;
+      final int confidence = probability <= 1
+          ? (probability * 100).round()
+          : probability.round();
       return PossibleCondition(
         name: name,
-        confidence: confidence.round().clamp(0, 100),
+        confidence: confidence.clamp(0, 100),
       );
     }).toList();
 
@@ -111,7 +119,12 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
 
     final String? urgency =
         (analysis['safety'] as Map<String, dynamic>?)?['urgency'] as String?;
-    final String? severityRaw = analysis['severity'] as String?;
+    final Object? severityField = analysis['severity'];
+    final String? severityRaw = severityField is String
+        ? severityField
+        : severityField is Map<String, dynamic>
+        ? severityField['level'] as String?
+        : null;
 
     final SeverityLevel severity = urgency == 'emergency'
         ? SeverityLevel.high
@@ -152,19 +165,22 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
               .toList() ??
           const <String>[];
 
-      result.add(FacilityRecommendation(
-        facility: facility,
-        rank: rank,
-        confidence: confidence,
-        confidenceScore: score,
-        reasons: reasons,
-      ));
+      result.add(
+        FacilityRecommendation(
+          facility: facility,
+          rank: rank,
+          confidence: confidence,
+          confidenceScore: score,
+          reasons: reasons,
+        ),
+      );
     }
     return result;
   }
 
   Facility _mapFacility(Map<String, dynamic> h) {
-    final Map<String, dynamic>? location = h['location'] as Map<String, dynamic>?;
+    final Map<String, dynamic>? location =
+        h['location'] as Map<String, dynamic>?;
     final List<dynamic> coords =
         location?['coordinates'] as List<dynamic>? ?? <dynamic>[0, 0];
     final double lng = (coords[0] as num).toDouble();
@@ -172,10 +188,14 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
 
     final num maxCapacity = (h['maxCapacity'] as num?) ?? 0;
     final num currentPatients = (h['currentPatients'] as num?) ?? 0;
-    final double occupancyPct =
-        maxCapacity == 0 ? 0 : (currentPatients / maxCapacity) * 100;
+    final double occupancyPct = maxCapacity == 0
+        ? 0
+        : (currentPatients / maxCapacity) * 100;
     final double distanceKm = ((h['distance'] as num?) ?? 0).toDouble();
-    final int estimatedEtaMinutes = (distanceKm / 30 * 60).round().clamp(1, 180);
+    final int estimatedEtaMinutes = (distanceKm / 30 * 60).round().clamp(
+      1,
+      180,
+    );
 
     return Facility(
       id: (h['_id'] ?? h['id'] ?? '').toString(),
@@ -192,8 +212,8 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
       totalBeds: ((h['availableBeds'] as num?) ?? maxCapacity).round(),
       waitMinutes:
           ((h['estimatedWaitingTime'] ?? h['averageWaitingTime']) as num?)
-                  ?.round() ??
-              0,
+              ?.round() ??
+          0,
       emergencies: 0,
       isEmergencyCapable: (h['emergency'] as bool?) ?? false,
       latitude: lat,
@@ -201,11 +221,13 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
       staffCount: ((h['availableDoctors'] as num?) ?? 0).round(),
       patientCapacity: maxCapacity.round(),
       phoneNumber: (h['phone'] as String?) ?? '',
-      departments: (h['specialties'] as List<dynamic>?)
+      departments:
+          (h['specialties'] as List<dynamic>?)
               ?.map((dynamic e) => e.toString())
               .toList() ??
           const <String>[],
-      services: (h['services'] as List<dynamic>?)
+      services:
+          (h['services'] as List<dynamic>?)
               ?.map((dynamic e) => e.toString())
               .toList() ??
           const <String>[],
@@ -234,14 +256,34 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
           record['symptoms'] as List<dynamic>? ?? <dynamic>[];
       final String label = symptomsJson.isEmpty
           ? 'Symptom check'
-          : symptomsJson.map((dynamic s) => s.toString()).join(', ');
+          : symptomsJson.map(_symptomName).join(', ');
       final String? createdAt = record['createdAt'] as String?;
       return RecentSymptom(
         label: label,
-        whenLabel:
-            createdAt == null ? '' : _relativeTime(DateTime.parse(createdAt)),
+        whenLabel: createdAt == null
+            ? ''
+            : _relativeTime(DateTime.parse(createdAt)),
       );
     }).toList();
+  }
+
+  String _symptomName(dynamic symptom) {
+    if (symptom is Map) {
+      return symptom['name']?.toString() ?? 'Unknown symptom';
+    }
+
+    final String value = symptom.toString();
+    final RegExpMatch? jsonName = RegExp(
+      r'"name"\s*:\s*"([^"]+)"',
+    ).firstMatch(value);
+    if (jsonName != null) return jsonName.group(1)!;
+
+    final RegExpMatch? logName = RegExp(
+      r'name\s*:\s*([^,}]+)',
+    ).firstMatch(value);
+    if (logName != null) return logName.group(1)!.trim();
+
+    return value;
   }
 
   String _relativeTime(DateTime dateTime) {

@@ -148,7 +148,7 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
     on<OnboardingBloodTypeSelected>(_onBloodTypeSelected);
     on<OnboardingNextPressed>(_onNextPressed);
     on<OnboardingBackPressed>(_onBackPressed);
-    on<OnboardingSkipPressed>(_onSkipPressed); 
+    on<OnboardingSkipPressed>(_onSkipPressed);
   }
 
   final SubmitMedicalProfile _submitMedicalProfile;
@@ -257,30 +257,30 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
   }
 
   Future<void> _onSkipPressed(
-  OnboardingSkipPressed event,
-  Emitter<OnboardingState> emit,
-) async {
-  if (state.isLastStep) {
-    final MedicalProfileDraft draft = state.draft.bloodType == null
-        ? state.draft.copyWith(bloodType: 'Unknown')
-        : state.draft;
+    OnboardingSkipPressed event,
+    Emitter<OnboardingState> emit,
+  ) async {
+    if (state.isLastStep) {
+      final MedicalProfileDraft draft = state.draft.bloodType == null
+          ? state.draft.copyWith(bloodType: 'Unknown')
+          : state.draft;
 
-    emit(state.copyWith(status: BlocStatus.loading, clearError: true));
-    try {
-      await _submitMedicalProfile(draft);
-      emit(state.copyWith(status: BlocStatus.success, draft: draft));
-    } on Failure catch (failure) {
-      emit(
-        state.copyWith(
-          status: BlocStatus.failure,
-          errorMessage: failure.message,
-        ),
-      );
+      emit(state.copyWith(status: BlocStatus.loading, clearError: true));
+      try {
+        await _submitMedicalProfile(draft);
+        emit(state.copyWith(status: BlocStatus.success, draft: draft));
+      } on Failure catch (failure) {
+        emit(
+          state.copyWith(
+            status: BlocStatus.failure,
+            errorMessage: failure.message,
+          ),
+        );
+      }
+      return;
     }
-    return;
+    emit(state.copyWith(step: state.step + 1, clearError: true));
   }
-  emit(state.copyWith(step: state.step + 1, clearError: true));
-}
 
   /// Multi-select with an exclusive "None": choosing None clears everything
   /// else, and choosing anything else clears None.

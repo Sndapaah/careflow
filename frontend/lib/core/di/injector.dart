@@ -41,7 +41,7 @@ import '../../features/symptoms/presentation/bloc/symptom_analysis_bloc.dart';
 import '../../core/location/current_location_provider.dart';
 import '../../core/cache/last_diagnosis_cache.dart';
 import '../../features/symptoms/data/repositories/symptom_http_repository_impl.dart';
-import '../../core/cache/user_session_cache.dart'; 
+import '../../core/cache/user_session_cache.dart';
 import '../../features/profile/data/datasources/profile_http_data_source.dart';
 
 import '../network/api_client.dart';
@@ -60,9 +60,10 @@ void _registerDataSources() {
   sl
     ..registerLazySingleton<ApiClient>(ApiClient.new)
     ..registerLazySingleton<TokenStorage>(TokenStorage.new)
-    ..registerLazySingleton<CurrentLocationProvider>(CurrentLocationProvider.new)
+    ..registerLazySingleton<CurrentLocationProvider>(
+      CurrentLocationProvider.new,
+    )
     ..registerLazySingleton<LastDiagnosisCache>(LastDiagnosisCache.new)
-
     ..registerLazySingleton<AuthRemoteDataSource>(
       () => AuthHttpDataSource(
         apiClient: sl<ApiClient>(),
@@ -70,7 +71,6 @@ void _registerDataSources() {
         sessionCache: sl<UserSessionCache>(),
       ),
     )
-
     ..registerLazySingleton<OnboardingRemoteDataSource>(
       () => OnboardingHttpDataSource(
         apiClient: sl<ApiClient>(),
@@ -78,7 +78,6 @@ void _registerDataSources() {
         sessionCache: sl<UserSessionCache>(),
       ),
     )
-
     ..registerLazySingleton<FacilityRemoteDataSource>(
       () => FacilityHttpDataSource(
         apiClient: sl<ApiClient>(),
@@ -86,18 +85,15 @@ void _registerDataSources() {
         diagnosisCache: sl<LastDiagnosisCache>(),
       ),
     )
-
     ..registerLazySingleton(() => UpdateProfile(sl<ProfileRepository>()))
-
     ..registerLazySingleton<UserSessionCache>(UserSessionCache.new)
-
     ..registerLazySingleton<ProfileLocalDataSource>(
-    () => ProfileHttpDataSource(
-      sessionCache: sl<UserSessionCache>(),
-      apiClient: sl<ApiClient>(),
-      tokenStorage: sl<TokenStorage>(),
-    ),
-  );
+      () => ProfileHttpDataSource(
+        sessionCache: sl<UserSessionCache>(),
+        apiClient: sl<ApiClient>(),
+        tokenStorage: sl<TokenStorage>(),
+      ),
+    );
 }
 
 void _registerRepositories() {
@@ -105,19 +101,15 @@ void _registerRepositories() {
     ..registerLazySingleton<AuthRepository>(
       () => AuthRepositoryImpl(sl<AuthRemoteDataSource>()),
     )
-
     ..registerLazySingleton<FacilityRepository>(
       () => FacilityRepositoryImpl(sl<FacilityRemoteDataSource>()),
     )
-
     ..registerLazySingleton<ProfileRepository>(
       () => ProfileRepositoryImpl(sl<ProfileLocalDataSource>()),
     )
-
     ..registerLazySingleton<OnboardingRepository>(
       () => OnboardingRepositoryImpl(sl<OnboardingRemoteDataSource>()),
     )
-
     ..registerLazySingleton<SymptomRepository>(
       () => SymptomHttpRepositoryImpl(
         apiClient: sl<ApiClient>(),
@@ -126,8 +118,9 @@ void _registerRepositories() {
         diagnosisCache: sl<LastDiagnosisCache>(),
       ),
     )
-
-    ..registerLazySingleton<HomeRepository>(HomeRepositoryImpl.new);   // ← was missing entirely
+    ..registerLazySingleton<HomeRepository>(
+      HomeRepositoryImpl.new,
+    ); // ← was missing entirely
 }
 
 void _registerUseCases() {
@@ -138,25 +131,20 @@ void _registerUseCases() {
     ..registerLazySingleton(() => VerifyOtp(sl<AuthRepository>()))
     ..registerLazySingleton(() => ResendOtp(sl<AuthRepository>()))
     ..registerLazySingleton(() => SignOut(sl<AuthRepository>()))
-
     ..registerLazySingleton(() => GetNearbyFacilities(sl<FacilityRepository>()))
     ..registerLazySingleton(() => GetRecommendations(sl<FacilityRepository>()))
     ..registerLazySingleton(() => GetEmergencyMatch(sl<FacilityRepository>()))
     ..registerLazySingleton(() => GetFacilityById(sl<FacilityRepository>()))
-
     ..registerLazySingleton(() => AnalyzeSymptoms(sl<SymptomRepository>()))
     ..registerLazySingleton(() => GetQuickSymptoms(sl<SymptomRepository>()))
     ..registerLazySingleton(() => GetRecentSymptoms(sl<SymptomRepository>()))
-
     ..registerLazySingleton(() => GetDailyTip(sl<HomeRepository>()))
     ..registerLazySingleton(
       () => GetUnreadNotificationCount(sl<HomeRepository>()),
     )
-
     ..registerLazySingleton(
       () => SubmitMedicalProfile(sl<OnboardingRepository>()),
     )
-
     ..registerLazySingleton(() => GetPatientProfile(sl<ProfileRepository>()))
     ..registerLazySingleton(
       () => SetNotificationsEnabled(sl<ProfileRepository>()),
@@ -174,71 +162,45 @@ void _registerBlocs() {
         signInWithProvider: sl<SignInWithProvider>(),
       ),
     )
-
     ..registerFactory(
       () => RegisterBloc(
         signUpWithEmail: sl<SignUpWithEmail>(),
         signInWithProvider: sl<SignInWithProvider>(),
       ),
     )
-
     ..registerFactory(
-      () => OtpBloc(
-        verifyOtp: sl<VerifyOtp>(),
-        resendOtp: sl<ResendOtp>(),
-      ),
+      () => OtpBloc(verifyOtp: sl<VerifyOtp>(), resendOtp: sl<ResendOtp>()),
     )
-
     ..registerFactory(
-      () => OnboardingBloc(
-        submitMedicalProfile: sl<SubmitMedicalProfile>(),
-      ),
+      () => OnboardingBloc(submitMedicalProfile: sl<SubmitMedicalProfile>()),
     )
-
     ..registerFactory(() {
-    final Map<String, dynamic>? user = sl<UserSessionCache>().current;
-    final String name = (user?['fullname'] as String?) ?? 'there';
-    return HomeBloc(
-      getNearbyFacilities: sl<GetNearbyFacilities>(),
-      getQuickSymptoms: sl<GetQuickSymptoms>(),
-      getRecentSymptoms: sl<GetRecentSymptoms>(),
-      getDailyTip: sl<GetDailyTip>(),
-      getUnreadNotificationCount: sl<GetUnreadNotificationCount>(),
-      patientName: name,
-    );
-  }
-)
-
+      final Map<String, dynamic>? user = sl<UserSessionCache>().current;
+      final String name = (user?['fullname'] as String?) ?? 'there';
+      return HomeBloc(
+        getNearbyFacilities: sl<GetNearbyFacilities>(),
+        getQuickSymptoms: sl<GetQuickSymptoms>(),
+        getRecentSymptoms: sl<GetRecentSymptoms>(),
+        getDailyTip: sl<GetDailyTip>(),
+        getUnreadNotificationCount: sl<GetUnreadNotificationCount>(),
+        patientName: name,
+      );
+    })
     ..registerFactory(
-      () => SymptomAnalysisBloc(
-        analyzeSymptoms: sl<AnalyzeSymptoms>(),
-      ),
+      () => SymptomAnalysisBloc(analyzeSymptoms: sl<AnalyzeSymptoms>()),
     )
-
     ..registerFactory(
-      () => RecommendationsBloc(
-        getRecommendations: sl<GetRecommendations>(),
-      ),
+      () => RecommendationsBloc(getRecommendations: sl<GetRecommendations>()),
     )
-
     ..registerFactory(
-      () => FacilityDetailBloc(
-        getFacilityById: sl<GetFacilityById>(),
-      ),
+      () => FacilityDetailBloc(getFacilityById: sl<GetFacilityById>()),
     )
-
     ..registerFactory(
-      () => EmergencyBloc(
-        getEmergencyMatch: sl<GetEmergencyMatch>(),
-      ),
+      () => EmergencyBloc(getEmergencyMatch: sl<GetEmergencyMatch>()),
     )
-
     ..registerFactory(
-      () => MapBloc(
-        getRecommendations: sl<GetRecommendations>(),
-      ),
+      () => MapBloc(getRecommendations: sl<GetRecommendations>()),
     )
-
     ..registerFactory(
       () => ProfileBloc(
         getPatientProfile: sl<GetPatientProfile>(),

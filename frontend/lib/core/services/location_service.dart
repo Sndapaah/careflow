@@ -1,7 +1,12 @@
 // lib/core/services/location_service.dart
 import 'package:geolocator/geolocator.dart';
 
-enum LocationPermissionResult { granted, denied, deniedForever, serviceDisabled }
+enum LocationPermissionResult {
+  granted,
+  denied,
+  deniedForever,
+  serviceDisabled,
+}
 
 class LocationService {
   static Future<LocationPermissionResult> ensurePermission() async {

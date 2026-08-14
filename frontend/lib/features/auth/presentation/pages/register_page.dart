@@ -81,7 +81,8 @@ class _RegisterView extends StatelessWidget {
                           hint: 'Full Name',
                           textInputAction: TextInputAction.next,
                           validator: FieldValidators.fullName,
-                          onChanged: (String v) => bloc.add(RegisterFullNameChanged(v)),
+                          onChanged: (String v) =>
+                              bloc.add(RegisterFullNameChanged(v)),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         ValidatedField(
@@ -89,7 +90,8 @@ class _RegisterView extends StatelessWidget {
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           validator: FieldValidators.email,
-                          onChanged: (String v) => bloc.add(RegisterEmailChanged(v)),
+                          onChanged: (String v) =>
+                              bloc.add(RegisterEmailChanged(v)),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         ValidatedField(
@@ -97,7 +99,8 @@ class _RegisterView extends StatelessWidget {
                           keyboardType: TextInputType.phone,
                           textInputAction: TextInputAction.next,
                           validator: FieldValidators.phone,
-                          onChanged: (String v) => bloc.add(RegisterPhoneChanged(v)),
+                          onChanged: (String v) =>
+                              bloc.add(RegisterPhoneChanged(v)),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         ValidatedField(
@@ -105,7 +108,8 @@ class _RegisterView extends StatelessWidget {
                           obscureText: true,
                           textInputAction: TextInputAction.done,
                           validator: FieldValidators.password,
-                          onChanged: (String v) => bloc.add(RegisterPasswordChanged(v)),
+                          onChanged: (String v) =>
+                              bloc.add(RegisterPasswordChanged(v)),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         const _TermsNotice(),

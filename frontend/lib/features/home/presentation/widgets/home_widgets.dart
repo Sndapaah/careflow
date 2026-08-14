@@ -474,9 +474,8 @@ class AdditionalNotesField extends StatelessWidget {
               isDense: true,
               border: InputBorder.none,
               contentPadding: const EdgeInsets.all(AppSpacing.sm),
-              hintText:
-                  'Anything else you want to mention... ',
-                hintStyle: AppTextStyles.bodyLarge.copyWith(
+              hintText: 'Anything else you want to mention... ',
+              hintStyle: AppTextStyles.bodyLarge.copyWith(
                 color: AppColors.textMuted,
                 fontWeight: FontWeight.w400,
               ),
@@ -542,13 +541,31 @@ class RecentSymptomTile extends StatelessWidget {
 }
 
 /// Green card at the foot of the home screen.
-class HealthTipCard extends StatelessWidget {
+class HealthTipCard extends StatefulWidget {
   const HealthTipCard({super.key, required this.tip});
 
   final HealthTip tip;
 
   @override
+  State<HealthTipCard> createState() => _HealthTipCardState();
+}
+
+class _HealthTipCardState extends State<HealthTipCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final HealthTip tip = widget.tip;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -585,9 +602,70 @@ class HealthTipCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          const _WaterGlass(size: 76),
+          _AnimatedTipIllustration(
+            tip: tip,
+            animation: CurvedAnimation(
+              parent: _controller,
+              curve: Curves.easeInOut,
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _AnimatedTipIllustration extends StatelessWidget {
+  const _AnimatedTipIllustration({required this.tip, required this.animation});
+
+  final HealthTip tip;
+  final Animation<double> animation;
+
+  @override
+  Widget build(BuildContext context) {
+    final String body = tip.body.toLowerCase();
+    final bool isWater = body.contains('water') || body.contains('hydrat');
+    final IconData icon = body.contains('sleep')
+        ? Icons.bedtime_rounded
+        : body.contains('hand')
+        ? Icons.wash_rounded
+        : body.contains('walk')
+        ? Icons.directions_walk_rounded
+        : body.contains('screen') || body.contains('eyes')
+        ? Icons.visibility_rounded
+        : body.contains('breath')
+        ? Icons.air_rounded
+        : Icons.favorite_rounded;
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (_, Widget? child) {
+        final double value = animation.value;
+        final Offset offset = icon == Icons.directions_walk_rounded
+            ? Offset((value - 0.5) * 12, 0)
+            : icon == Icons.air_rounded
+            ? Offset((value - 0.5) * 8, (0.5 - value) * 4)
+            : Offset(0, (0.5 - value) * 7);
+        final double scale = icon == Icons.visibility_rounded
+            ? 0.9 + (value * 0.1)
+            : 0.96 + (value * 0.08);
+        return Transform.translate(
+          offset: offset,
+          child: Transform.scale(scale: scale, child: child),
+        );
+      },
+      child: isWater
+          ? const _WaterGlass(size: 76)
+          : Container(
+              width: 76,
+              height: 76,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.successSurface,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 38, color: AppColors.success),
+            ),
     );
   }
 }

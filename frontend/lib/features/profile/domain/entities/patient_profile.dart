@@ -88,7 +88,7 @@ class PatientProfile extends Equatable {
   String get conditionsLabel =>
       conditions.isEmpty ? 'None' : conditions.join(', ');
 
-PatientProfile copyWith({
+  PatientProfile copyWith({
     bool? notificationsEnabled,
     bool? emergencyAlertsEnabled,
   }) => PatientProfile(

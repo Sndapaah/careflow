@@ -13,7 +13,8 @@ class RouteResult {
   final double distanceMeters;
   final int durationSeconds;
 
-  String get distanceLabel => '${(distanceMeters / 1000).toStringAsFixed(1)} km';
+  String get distanceLabel =>
+      '${(distanceMeters / 1000).toStringAsFixed(1)} km';
 
   String get durationLabel {
     final int minutes = (durationSeconds / 60).round();
@@ -44,7 +45,8 @@ class DirectionsService {
     final http.Response response = await http.get(uri);
     if (response.statusCode != 200) return null;
 
-    final Map<String, dynamic> json = jsonDecode(response.body) as Map<String, dynamic>;
+    final Map<String, dynamic> json =
+        jsonDecode(response.body) as Map<String, dynamic>;
     if (json['status'] != 'OK') return null;
 
     final List<dynamic> routes = json['routes'] as List<dynamic>;
@@ -55,12 +57,16 @@ class DirectionsService {
     final Map<String, dynamic> leg = legs.first as Map<String, dynamic>;
 
     final String encodedPolyline =
-        (route['overview_polyline'] as Map<String, dynamic>)['points'] as String;
+        (route['overview_polyline'] as Map<String, dynamic>)['points']
+            as String;
 
     return RouteResult(
       points: _decodePolyline(encodedPolyline),
-      distanceMeters: ((leg['distance'] as Map<String, dynamic>)['value'] as num).toDouble(),
-      durationSeconds: (leg['duration'] as Map<String, dynamic>)['value'] as int,
+      distanceMeters:
+          ((leg['distance'] as Map<String, dynamic>)['value'] as num)
+              .toDouble(),
+      durationSeconds:
+          (leg['duration'] as Map<String, dynamic>)['value'] as int,
     );
   }
 

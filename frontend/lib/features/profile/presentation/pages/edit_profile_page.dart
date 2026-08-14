@@ -116,134 +116,155 @@ class _EditProfilePageState extends State<EditProfilePage> {
     context.read<ProfileBloc>().add(ProfileUpdateRequested(updated));
   }
 
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    body: SafeArea(
-      child: BlocConsumer<ProfileBloc, ProfileState>(
-        listenWhen: (ProfileState p, ProfileState c) => p.status != c.status,
-        listener: (BuildContext context, ProfileState state) {
-          if (state.status.isSuccess) {
-           // context.pop();
-          context.go(AppRoutes.profile);
-          } else if (state.status.isFailure && state.errorMessage != null) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(content: Text(state.errorMessage!)));
-          }
-        },
-        builder: (BuildContext innerContext, ProfileState state) {
-          return Column(
-            children: <Widget>[
-              const AppTopBar(title: 'Edit Profile'),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.gutter,
-                    AppSpacing.md,
-                    AppSpacing.gutter,
-                    AppSpacing.xl,
-                  ),
-                  children: <Widget>[
-                          Text('Gender', 
-                          style: AppTextStyles.h3.copyWith(fontSize: 17)),
-                          const SizedBox(height: AppSpacing.sm),
-                          GenderChoice(
-                            selected: _gender,
-                            onSelect: (Gender g) => setState(() => _gender = g),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text('Date of birth', style: AppTextStyles.h3.copyWith(fontSize: 17)),
-                          const SizedBox(height: AppSpacing.sm),
-                          AppPickerField(
-                            label: 'Select Date',
-                            value: DateFormat('yyyy-MM-dd').format(_dateOfBirth),
-                            trailing: Icons.calendar_month_outlined,
-                            onTap: _pickDate,
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text('Blood type', style: AppTextStyles.h3.copyWith(fontSize: 17)),
-                          const SizedBox(height: AppSpacing.sm),
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.sm,
-                            children: <Widget>[
-                              for (final String option in MedicalProfileDraft.bloodTypeOptions)
-                                OptionChip(
-                                  label: option,
-                                  selected: _bloodType == option,
-                                  onTap: () => setState(() => _bloodType = option),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text('Allergies', style: AppTextStyles.h3.copyWith(fontSize: 17)),
-                          const SizedBox(height: AppSpacing.sm),
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.sm,
-                            children: <Widget>[
-                              for (final String option in MedicalProfileDraft.allergyOptions)
-                                OptionChip(
-                                  label: option,
-                                  selected: _allergies.contains(option),
-                                  onTap: () => _toggle(_allergies, option),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text('Conditions', style: AppTextStyles.h3.copyWith(fontSize: 17)),
-                          const SizedBox(height: AppSpacing.sm),
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.sm,
-                            children: <Widget>[
-                              for (final String option in MedicalProfileDraft.conditionOptions)
-                                OptionChip(
-                                  label: option,
-                                  selected: _conditions.contains(option),
-                                  onTap: () => _toggle(_conditions, option),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text('Emergency Contact', style: AppTextStyles.h3.copyWith(fontSize: 17)),
-                          const SizedBox(height: AppSpacing.sm),
-                          AppTextField(hint: 'Full Name', controller: _contactName),
-                          const SizedBox(height: AppSpacing.md),
-                          AppPickerField(
-                            label: 'Select Relationship Type',
-                            value: _relationship.isEmpty ? null : _relationship,
-                            onTap: _pickRelationship,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          AppTextField(
-                            hint: 'Phone Number',
-                            controller: _contactPhone,
-                            keyboardType: TextInputType.phone,
-                          ),
-                          const SizedBox(height: AppSpacing.xl),
-                          // PrimaryButton(
-                          //   label: 'Save Changes',
-                          //   borderRadius: AppRadius.pill,
-                          //   onPressed: () => _save(context),
-                          // ),                    
-                          // const SizedBox(height: AppSpacing.xl),
-                    PrimaryButton(
-                      label: 'Save Changes',
-                      borderRadius: AppRadius.pill,
-                      isLoading: state.status.isLoading,
-                      onPressed: state.status.isLoading
-                          ? null
-                          : () => _save(context),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: BlocConsumer<ProfileBloc, ProfileState>(
+          listenWhen: (ProfileState p, ProfileState c) => p.status != c.status,
+          listener: (BuildContext context, ProfileState state) {
+            if (state.status.isSuccess) {
+              // context.pop();
+              context.go(AppRoutes.profile);
+            } else if (state.status.isFailure && state.errorMessage != null) {
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+            }
+          },
+          builder: (BuildContext innerContext, ProfileState state) {
+            return Column(
+              children: <Widget>[
+                const AppTopBar(title: 'Edit Profile'),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.gutter,
+                      AppSpacing.md,
+                      AppSpacing.gutter,
+                      AppSpacing.xl,
                     ),
-                  ],
+                    children: <Widget>[
+                      Text(
+                        'Gender',
+                        style: AppTextStyles.h3.copyWith(fontSize: 17),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      GenderChoice(
+                        selected: _gender,
+                        onSelect: (Gender g) => setState(() => _gender = g),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Date of birth',
+                        style: AppTextStyles.h3.copyWith(fontSize: 17),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      AppPickerField(
+                        label: 'Select Date',
+                        value: DateFormat('yyyy-MM-dd').format(_dateOfBirth),
+                        trailing: Icons.calendar_month_outlined,
+                        onTap: _pickDate,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Blood type',
+                        style: AppTextStyles.h3.copyWith(fontSize: 17),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.sm,
+                        children: <Widget>[
+                          for (final String option
+                              in MedicalProfileDraft.bloodTypeOptions)
+                            OptionChip(
+                              label: option,
+                              selected: _bloodType == option,
+                              onTap: () => setState(() => _bloodType = option),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Allergies',
+                        style: AppTextStyles.h3.copyWith(fontSize: 17),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.sm,
+                        children: <Widget>[
+                          for (final String option
+                              in MedicalProfileDraft.allergyOptions)
+                            OptionChip(
+                              label: option,
+                              selected: _allergies.contains(option),
+                              onTap: () => _toggle(_allergies, option),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Conditions',
+                        style: AppTextStyles.h3.copyWith(fontSize: 17),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.sm,
+                        children: <Widget>[
+                          for (final String option
+                              in MedicalProfileDraft.conditionOptions)
+                            OptionChip(
+                              label: option,
+                              selected: _conditions.contains(option),
+                              onTap: () => _toggle(_conditions, option),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Emergency Contact',
+                        style: AppTextStyles.h3.copyWith(fontSize: 17),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      AppTextField(hint: 'Full Name', controller: _contactName),
+                      const SizedBox(height: AppSpacing.md),
+                      AppPickerField(
+                        label: 'Select Relationship Type',
+                        value: _relationship.isEmpty ? null : _relationship,
+                        onTap: _pickRelationship,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        hint: 'Phone Number',
+                        controller: _contactPhone,
+                        keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      // PrimaryButton(
+                      //   label: 'Save Changes',
+                      //   borderRadius: AppRadius.pill,
+                      //   onPressed: () => _save(context),
+                      // ),
+                      // const SizedBox(height: AppSpacing.xl),
+                      PrimaryButton(
+                        label: 'Save Changes',
+                        borderRadius: AppRadius.pill,
+                        isLoading: state.status.isLoading,
+                        onPressed: state.status.isLoading
+                            ? null
+                            : () => _save(context),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
-    ),
-  );
-}}
+    );
+  }
+}

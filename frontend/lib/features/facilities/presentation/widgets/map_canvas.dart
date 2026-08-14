@@ -4,23 +4,26 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import '../../../../core/services/directions_service.dart';
 import '../../domain/entities/facility.dart';
-import 'package:geolocator/geolocator.dart';
 
-/// Light, low-saturation map style — carries over the CartoDB "light_all"
-/// look from the flutter_map version, since Google's default styling is
-/// busier/more saturated by comparison.
-const String _lightMapStyle = '''
+/// Dark blue / navy map styling structure — removes busy components while
+/// using dark slate, rich midnight blue geometry colors, and distinct accents.
+const String _darkBlueMapStyle = '''
 [
-  { "elementType": "geometry", "stylers": [{ "color": "#f5f5f5" }] },
+  { "elementType": "geometry", "stylers": [{ "color": "#1c2b46" }] },
   { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#616161" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#f5f5f5" }] },
-  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#ffffff" }] },
-  { "featureType": "road.arterial", "elementType": "geometry", "stylers": [{ "color": "#ffffff" }] },
-  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#dadada" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#c9c9c9" }] },
-  { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#eeeeee" }] },
-  { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#e5e5e5" }] }
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#7488a1" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#1c2b46" }] },
+  { "featureType": "administrative", "elementType": "geometry.stroke", "stylers": [{ "color": "#273a56" }] },
+  { "featureType": "administrative.land_parcel", "elementType": "labels.text.fill", "stylers": [{ "color": "#647793" }] },
+  { "featureType": "landscape.man_made", "elementType": "geometry.fill", "stylers": [{ "color": "#21324e" }] },
+  { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#283d5a" }] },
+  { "featureType": "poi.park", "elementType": "geometry.fill", "stylers": [{ "color": "#1b3d4a" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#2c3e5d" }] },
+  { "featureType": "road.arterial", "elementType": "geometry", "stylers": [{ "color": "#374c6d" }] },
+  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#182438" }] },
+  { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#2c3e5d" }] },
+  { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#2f476a" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0e1626" }] }
 ]
 ''';
 
@@ -30,6 +33,8 @@ class MapCanvas extends StatefulWidget {
     required this.facilities,
     required this.userPosition,
     required this.directionsApiKey,
+    required this.routeRequestId,
+    required this.locationPermissionGranted,
     this.selectedFacilityId,
     this.onMarkerTap,
     this.onRouteResolved,
@@ -39,6 +44,8 @@ class MapCanvas extends StatefulWidget {
   final List<Facility> facilities;
   final ll.LatLng userPosition;
   final String directionsApiKey;
+  final int routeRequestId;
+  final bool locationPermissionGranted;
   final String? selectedFacilityId;
   final ValueChanged<Facility>? onMarkerTap;
   final ValueChanged<RouteResult>? onRouteResolved;
@@ -50,40 +57,35 @@ class MapCanvas extends StatefulWidget {
 
 class _MapCanvasState extends State<MapCanvas> {
   GoogleMapController? _controller;
-  late final DirectionsService _directions =
-      DirectionsService(apiKey: widget.directionsApiKey);
+  late final DirectionsService _directions = DirectionsService(
+    apiKey: widget.directionsApiKey,
+  );
 
   List<LatLng> _routePoints = <LatLng>[];
   bool _loadingRoute = false;
-  bool _hasLocationPermission = false;
+  int _lastFetchedRequestId = -1;
 
   @override
   void initState() {
     super.initState();
-    _checkPermission();
-    // Handles arriving already pre-focused on a facility (e.g. via a
-    // recommendation) — didUpdateWidget never fires in that case since
-    // there's no prior value to compare against on the very first build.
     if (widget.selectedFacilityId != null) {
+      _lastFetchedRequestId = widget.routeRequestId;
       WidgetsBinding.instance.addPostFrameCallback((_) => _fetchRoute());
     }
-  }
-
-  Future<void> _checkPermission() async { 
-    final LocationPermission permission = await Geolocator.checkPermission();
-    final bool granted = permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse;
-    if (mounted) setState(() => _hasLocationPermission = granted);
   }
 
   @override
   void didUpdateWidget(covariant MapCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // FIXED: Trigger route updates if the selected facility changes, 
-    // OR if the user position changes (moving away from uninitialized fallbacks)
-    if (widget.selectedFacilityId != oldWidget.selectedFacilityId || 
-        widget.userPosition != oldWidget.userPosition) {
+    // FIXED: Now checks routeRequestId tracking index changes to cleanly capture repeat navigation signals
+    if (widget.selectedFacilityId != null &&
+        widget.routeRequestId != _lastFetchedRequestId) {
+      _lastFetchedRequestId = widget.routeRequestId;
       _fetchRoute();
+    } else if (widget.selectedFacilityId == null &&
+        oldWidget.selectedFacilityId != null) {
+      // Clear route points immediately if selection is revoked or cleared by overview requests
+      setState(() => _routePoints = <LatLng>[]);
     }
   }
 
@@ -103,14 +105,17 @@ class _MapCanvasState extends State<MapCanvas> {
       return;
     }
 
-    // FIXED GUARD: Guard routing math if the location position is matching uninitialized defaults
-    if (widget.userPosition.latitude == 6.6885 && widget.userPosition.longitude == -1.6244) {
+    if (widget.userPosition.latitude == 6.6885 &&
+        widget.userPosition.longitude == -1.6244) {
       return;
     }
 
     setState(() => _loadingRoute = true);
     final RouteResult? result = await _directions.getRoute(
-      origin: ll.LatLng(widget.userPosition.latitude, widget.userPosition.longitude),
+      origin: ll.LatLng(
+        widget.userPosition.latitude,
+        widget.userPosition.longitude,
+      ),
       destination: ll.LatLng(facility.latitude, facility.longitude),
     );
     if (!mounted) return;
@@ -119,7 +124,9 @@ class _MapCanvasState extends State<MapCanvas> {
       _loadingRoute = false;
       _routePoints = result == null
           ? <LatLng>[]
-          : result.points.map((ll.LatLng p) => LatLng(p.latitude, p.longitude)).toList();
+          : result.points
+                .map((ll.LatLng p) => LatLng(p.latitude, p.longitude))
+                .toList();
     });
 
     if (result != null) {
@@ -149,10 +156,10 @@ class _MapCanvasState extends State<MapCanvas> {
       controller.animateCamera(
         CameraUpdate.newLatLngBounds(
           LatLngBounds(
-            southwest: LatLng(south, west), 
+            southwest: LatLng(south, west),
             northeast: LatLng(north, east),
           ),
-          80, 
+          80,
         ),
       );
     } catch (e) {
@@ -165,7 +172,8 @@ class _MapCanvasState extends State<MapCanvas> {
     }
   }
 
-  BitmapDescriptor _markerIcon(bool isSelected) => BitmapDescriptor.defaultMarkerWithHue(
+  BitmapDescriptor _markerIcon(bool isSelected) =>
+      BitmapDescriptor.defaultMarkerWithHue(
         isSelected ? BitmapDescriptor.hueAzure : BitmapDescriptor.hueRed,
       );
 
@@ -174,17 +182,19 @@ class _MapCanvasState extends State<MapCanvas> {
     return Stack(
       children: <Widget>[
         GoogleMap(
-          //style: _lightMapStyle,
+          style: _darkBlueMapStyle,
           initialCameraPosition: CameraPosition(
-            target: LatLng(widget.userPosition.latitude, widget.userPosition.longitude),
+            target: LatLng(
+              widget.userPosition.latitude,
+              widget.userPosition.longitude,
+            ),
             zoom: 15.5,
           ),
           onMapCreated: (GoogleMapController controller) {
             _controller = controller;
-            // FIXED: Restored communication callback channel to feed page layouts cleanly
             widget.onMapReady?.call(controller);
           },
-          myLocationEnabled: _hasLocationPermission, 
+          myLocationEnabled: widget.locationPermissionGranted,
           myLocationButtonEnabled: false,
           markers: <Marker>{
             for (final Facility f in widget.facilities)
@@ -192,7 +202,12 @@ class _MapCanvasState extends State<MapCanvas> {
                 markerId: MarkerId(f.id),
                 position: LatLng(f.latitude, f.longitude),
                 icon: _markerIcon(f.id == widget.selectedFacilityId),
-                infoWindow: InfoWindow(title: f.name),
+                // FIXED: Enriched native window text strings with complete live telemetry parameters
+                infoWindow: InfoWindow(
+                  title: f.name,
+                  snippet:
+                      '${f.load.label} • ${f.currentPatients} patients • ${f.incomingPatients} incoming',
+                ),
                 onTap: () => widget.onMarkerTap?.call(f),
               ),
           },
@@ -201,7 +216,7 @@ class _MapCanvasState extends State<MapCanvas> {
               Polyline(
                 polylineId: const PolylineId('route'),
                 points: _routePoints,
-                color: const Color(0xFF2F6FED),
+                color: const Color(0xFF00E5FF),
                 width: 5,
               ),
           },

@@ -134,11 +134,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     required GetUnreadNotificationCount getUnreadNotificationCount,
     required String patientName,
   }) : _getNearbyFacilities = getNearbyFacilities,
-      _getQuickSymptoms = getQuickSymptoms,
-      _getRecentSymptoms = getRecentSymptoms,
-      _getDailyTip = getDailyTip,
-      _getUnreadNotificationCount = getUnreadNotificationCount,
-      super(HomeState(patientName: patientName)) {
+       _getQuickSymptoms = getQuickSymptoms,
+       _getRecentSymptoms = getRecentSymptoms,
+       _getDailyTip = getDailyTip,
+       _getUnreadNotificationCount = getUnreadNotificationCount,
+       super(HomeState(patientName: patientName)) {
     on<HomeStarted>(_onStarted);
     on<HomeSymptomQueryChanged>(
       (HomeSymptomQueryChanged e, Emitter<HomeState> emit) =>
@@ -162,12 +162,18 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     // Phase 1 — local, instant reads (tip, quick symptoms, notification count).
     // Emit these straight away so the page paints immediately instead of
     // waiting behind the slower network calls below.
-    final List<String> quickSymptoms =
-        await _guard(() => _getQuickSymptoms(const NoParams()), const <String>[]);
-    final HealthTip? tip =
-        await _guard<HealthTip?>(() => _getDailyTip(const NoParams()), null);
-    final int unread =
-        await _guard(() => _getUnreadNotificationCount(const NoParams()), 0);
+    final List<String> quickSymptoms = await _guard(
+      () => _getQuickSymptoms(const NoParams()),
+      const <String>[],
+    );
+    final HealthTip? tip = await _guard<HealthTip?>(
+      () => _getDailyTip(const NoParams()),
+      null,
+    );
+    final int unread = await _guard(
+      () => _getUnreadNotificationCount(const NoParams()),
+      0,
+    );
 
     emit(
       state.copyWith(

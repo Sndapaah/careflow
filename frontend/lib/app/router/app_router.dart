@@ -41,6 +41,7 @@ abstract final class AppRouter {
   static GoRouter build() => GoRouter(
     navigatorKey: _rootKey,
     initialLocation: AppRoutes.welcome,
+    // initialLocation: AppRoutes.home,
     routes: <RouteBase>[
       GoRoute(path: AppRoutes.welcome, builder: (_, _) => const WelcomePage()),
       GoRoute(path: AppRoutes.login, builder: (_, _) => const LoginPage()),
@@ -97,7 +98,7 @@ abstract final class AppRouter {
         parentNavigatorKey: _rootKey,
         builder: (_, _) => const NotificationsPage(),
       ),
-      
+
       // FIXED: Uses .value provider pattern to chain down the exact instance running inside the Profile Tab view
       GoRoute(
         path: AppRoutes.editProfile,
@@ -110,7 +111,7 @@ abstract final class AppRouter {
           );
         },
       ),
-      
+
       StatefulShellRoute.indexedStack(
         builder: (_, _, StatefulNavigationShell shell) =>
             MainShell(navigationShell: shell),

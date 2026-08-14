@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../features/facilities/domain/entities/facility_recommendation.dart';
 
 /// Bridges Diagnosis and Facilities: /diagnose already returns ranked
@@ -6,8 +8,14 @@ import '../../features/facilities/domain/entities/facility_recommendation.dart';
 class LastDiagnosisCache {
   List<FacilityRecommendation>? _recommendations;
   DateTime? _fetchedAt;
+  final StreamController<void> _completedController =
+      StreamController<void>.broadcast();
 
   static const Duration _freshFor = Duration(minutes: 10);
+
+  Stream<void> get diagnosisCompleted => _completedController.stream;
+
+  void markDiagnosisCompleted() => _completedController.add(null);
 
   void store(List<FacilityRecommendation> recommendations) {
     _recommendations = recommendations;

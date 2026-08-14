@@ -17,12 +17,12 @@ class WelcomePage extends StatelessWidget {
   static const EdgeInsets _actionInset = EdgeInsets.symmetric(horizontal: 40);
 
   void _showComingSoon(BuildContext context, String provider) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text('$provider sign-in is coming soon.')),
-    );
-}
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('$provider sign-in is coming soon.')),
+      );
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -10,9 +10,9 @@ class ProfileHttpDataSource implements ProfileLocalDataSource {
     required UserSessionCache sessionCache,
     required ApiClient apiClient,
     required TokenStorage tokenStorage,
-  })  : _cache = sessionCache,
-        _api = apiClient,
-        _tokenStorage = tokenStorage;
+  }) : _cache = sessionCache,
+       _api = apiClient,
+       _tokenStorage = tokenStorage;
 
   final UserSessionCache _cache;
   final ApiClient _api;
@@ -45,11 +45,13 @@ class ProfileHttpDataSource implements ProfileLocalDataSource {
           ? Gender.female
           : Gender.male,
       bloodType: (user['bloodType'] as String?) ?? '',
-      allergies: (user['allergies'] as List<dynamic>?)
+      allergies:
+          (user['allergies'] as List<dynamic>?)
               ?.map((dynamic e) => e.toString())
               .toList() ??
           const <String>[],
-      conditions: (user['existingHealthConds'] as List<dynamic>?)
+      conditions:
+          (user['existingHealthConds'] as List<dynamic>?)
               ?.map((dynamic e) => e.toString())
               .toList() ??
           const <String>[],

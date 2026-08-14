@@ -22,15 +22,21 @@ app.use(helmet())
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 500,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many requests, slow down a bit.' }
+max: 500,
+standardHeaders: true,
+legacyHeaders: false,
+message: { message: 'Too many requests, slow down a bit.' }
 })
 
 app.use(limiter);
 
 // routes here
+app.get('/', (req, res) => {
+    res.json({
+        health: 'OK',
+        status: 'Running'
+    })
+})
 app.use('/api/auth', authRoutes)
 app.use('/api/hospitals', hospitalRoutes)
 app.use('/api/diagnosis', diagnosisRoutes)

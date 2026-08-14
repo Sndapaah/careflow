@@ -23,28 +23,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 30,
-            vertical: 25,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 25),
 
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-
               const SizedBox(height: 20),
 
-              Image.asset(
-                'assets/icons/logo.png',
-                width: 120,
-              ),
+              Image.asset('assets/icons/logo.png', width: 120),
 
               const SizedBox(height: 25),
 
-              Text(
-                "Create Account",
-                style: AppTextStyles.display,
-              ),
+              Text("Create Account", style: AppTextStyles.display),
 
               const SizedBox(height: 10),
 
@@ -83,9 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   suffixIcon: IconButton(
                     icon: Icon(
-                      obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                      obscurePassword ? Icons.visibility_off : Icons.visibility,
                     ),
                     onPressed: () {
                       setState(() {
@@ -107,9 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   suffixIcon: IconButton(
                     icon: Icon(
-                      obscureConfirm
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                      obscureConfirm ? Icons.visibility_off : Icons.visibility,
                     ),
                     onPressed: () {
                       setState(() {
@@ -124,7 +110,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               Row(
                 children: [
-
                   Checkbox(
                     value: agree,
                     activeColor: AppColors.primary,
@@ -137,11 +122,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
 
                   const Expanded(
-                    child: Text(
-                      "I agree to the Terms and Conditions",
-                    ),
+                    child: Text("I agree to the Terms and Conditions"),
                   ),
-
                 ],
               ),
 
@@ -152,7 +134,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 height: 55,
 
                 child: ElevatedButton(
-
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -162,18 +143,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
 
                   onPressed: () {
-                  Navigator.pushReplacementNamed(
-                    context,
-                    AppRoutes.otp,
-                    );
+                    Navigator.pushReplacementNamed(context, AppRoutes.otp);
                   },
 
                   child: const Text(
                     "Create Account",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                 ),
               ),
@@ -184,24 +159,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
 
                 children: [
-
-                  const Text(
-                    "Already have an account?",
-                  ),
+                  const Text("Already have an account?"),
 
                   TextButton(
                     onPressed: () {
-                      Navigator.pushReplacementNamed(
-                        context,
-                        AppRoutes.login,
-                      );
+                      Navigator.pushReplacementNamed(context, AppRoutes.login);
                     },
                     child: const Text("Login"),
                   ),
-
                 ],
               ),
-
             ],
           ),
         ),

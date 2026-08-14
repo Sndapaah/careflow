@@ -79,26 +79,29 @@ class _OnboardingView extends StatelessWidget {
                       child: _StepBody(state: state, bloc: bloc),
                     ),
                   ),
-              Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl).copyWith(
-                    top: AppSpacing.md,
-                    bottom: AppSpacing.xl,
-                  ),
-                  child: _showsSkip(state.step)
-                      ? Row(
-                          children: <Widget>[
-                            Expanded(child: _SkipButton(state: state, bloc: bloc)),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(child: _NextButton(state: state, bloc: bloc)),
-                          ],
-                        )
-                      : Center(
-                          child: SizedBox(
-                            width: 240,
-                            child: _NextButton(state: state, bloc: bloc),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xl,
+                    ).copyWith(top: AppSpacing.md, bottom: AppSpacing.xl),
+                    child: _showsSkip(state.step)
+                        ? Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: _SkipButton(state: state, bloc: bloc),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: _NextButton(state: state, bloc: bloc),
+                              ),
+                            ],
+                          )
+                        : Center(
+                            child: SizedBox(
+                              width: 240,
+                              child: _NextButton(state: state, bloc: bloc),
+                            ),
                           ),
-                        ),
-                ),
+                  ),
                 ],
               ),
             ),
@@ -356,30 +359,41 @@ class _ContactStep extends StatelessWidget {
   Future<void> _pickRelationship(BuildContext context) async {
     final String? choice = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled:
+          true, // let the sheet size to its content, up to screen height
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
       builder: (BuildContext sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: 44,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderStrong,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.7,
+          ),
+          child: ListView(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              const SizedBox(height: AppSpacing.sm),
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.borderStrong,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            for (final String option in MedicalProfileDraft.relationshipOptions)
-              ListTile(
-                title: Text(option, style: AppTextStyles.bodyLarge),
-                onTap: () => Navigator.of(sheetContext).pop(option),
-              ),
-          ],
+              const SizedBox(height: AppSpacing.sm),
+              for (final String option
+                  in MedicalProfileDraft.relationshipOptions)
+                ListTile(
+                  title: Text(option, style: AppTextStyles.bodyLarge),
+                  onTap: () => Navigator.of(sheetContext).pop(option),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -404,7 +418,8 @@ class _ContactStep extends StatelessWidget {
                 style: TextStyle(color: AppColors.accent),
               ),
               const TextSpan(
-                text: ' Please we will like to have an emergency contact of yours.',
+                text:
+                    ' Please we will like to have an emergency contact of yours.',
               ),
             ],
           ),
@@ -417,7 +432,8 @@ class _ContactStep extends StatelessWidget {
           hint: 'Full Name',
           textInputAction: TextInputAction.next,
           validator: FieldValidators.fullName,
-          onChanged: (String v) => bloc.add(OnboardingContactChanged(fullName: v)),
+          onChanged: (String v) =>
+              bloc.add(OnboardingContactChanged(fullName: v)),
         ),
         const SizedBox(height: AppSpacing.md),
         AppPickerField(
@@ -432,13 +448,15 @@ class _ContactStep extends StatelessWidget {
           keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.done,
           validator: FieldValidators.phone,
-          onChanged: (String v) => bloc.add(OnboardingContactChanged(phoneNumber: v)),
+          onChanged: (String v) =>
+              bloc.add(OnboardingContactChanged(phoneNumber: v)),
         ),
         const SizedBox(height: AppSpacing.xl),
       ],
     );
   }
 }
+
 class _NextButton extends StatelessWidget {
   const _NextButton({required this.state, required this.bloc});
 

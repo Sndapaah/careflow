@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -47,15 +49,16 @@ class _AiAnalysisView extends StatelessWidget {
             ),
             Expanded(
               child: BlocConsumer<SymptomAnalysisBloc, SymptomAnalysisState>(
-                listenWhen: (SymptomAnalysisState previous, SymptomAnalysisState current) =>
-                    current.analysis?.severity == SeverityLevel.high &&
-                    previous.analysis?.severity != SeverityLevel.high,
+                listenWhen:
+                    (
+                      SymptomAnalysisState previous,
+                      SymptomAnalysisState current,
+                    ) =>
+                        current.analysis?.severity == SeverityLevel.high &&
+                        previous.analysis?.severity != SeverityLevel.high,
                 listener: (BuildContext context, SymptomAnalysisState state) =>
                     _showEmergencyDialog(context, state.analysis!),
                 builder: (BuildContext context, SymptomAnalysisState state) {
-                  if (state.status.isLoading || state.analysis == null) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
                   if (state.status.isFailure) {
                     return Center(
                       child: Padding(
@@ -67,6 +70,9 @@ class _AiAnalysisView extends StatelessWidget {
                         ),
                       ),
                     );
+                  }
+                  if (state.status.isLoading || state.analysis == null) {
+                    return const _AnalysisLoadingView();
                   }
                   return _AnalysisBody(analysis: state.analysis!);
                 },
@@ -149,6 +155,70 @@ class _AiAnalysisView extends StatelessWidget {
     if (proceed == true && context.mounted) {
       await context.push(AppRoutes.emergency, extra: analysis);
     }
+  }
+}
+
+class _AnalysisLoadingView extends StatefulWidget {
+  const _AnalysisLoadingView();
+
+  @override
+  State<_AnalysisLoadingView> createState() => _AnalysisLoadingViewState();
+}
+
+class _AnalysisLoadingViewState extends State<_AnalysisLoadingView> {
+  static const List<String> _messages = <String>[
+    'Reviewing your symptoms',
+    'Checking safety signals',
+    'Comparing care options',
+    'Finding the best care for you',
+  ];
+
+  Timer? _messageTimer;
+  int _messageIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _messageTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) {
+        setState(
+          () => _messageIndex = (_messageIndex + 1) % _messages.length,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _messageTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const CareFlowHoverLogo(size: 112),
+          const SizedBox(height: AppSpacing.lg),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: Text(
+              _messages[_messageIndex],
+              key: ValueKey<int>(_messageIndex),
+              style: AppTextStyles.h3,
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(
+            width: 120,
+            child: LinearProgressIndicator(minHeight: 3),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../error/failure.dart';
@@ -24,18 +25,33 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? body,
     bool authenticated = false,
-  }) => _send('POST', path, body: body, authenticated: authenticated);
+    Duration? timeout,
+  }) => _send(
+    'POST',
+    path,
+    body: body,
+    authenticated: authenticated,
+    timeout: timeout,
+  );
 
   Future<Map<String, dynamic>> get(
     String path, {
     bool authenticated = false,
-  }) => _send('GET', path, authenticated: authenticated);
+    Duration? timeout,
+  }) =>
+      _send(
+        'GET',
+        path,
+        authenticated: authenticated,
+        timeout: timeout,
+      );
 
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {
     Map<String, dynamic>? body,
     required bool authenticated,
+    Duration? timeout,
   }) async {
     final Uri uri = Uri.parse('${ApiConfig.baseUrl}$path');
     final Map<String, String> headers = <String, String>{
@@ -49,14 +65,15 @@ class ApiClient {
 
     http.Response response;
     try {
-      response = await (method == 'GET'
-              ? _client.get(uri, headers: headers)
-              : _client.post(
-                  uri,
-                  headers: headers,
-                  body: body == null ? null : jsonEncode(body),
-                ))
-          .timeout(_timeout);
+      response =
+          await (method == 'GET'
+                  ? _client.get(uri, headers: headers)
+                  : _client.post(
+                      uri,
+                      headers: headers,
+                      body: body == null ? null : jsonEncode(body),
+                    ))
+              .timeout(timeout ?? _timeout);
     } on SocketException {
       throw const NetworkFailure();
     } on http.ClientException {
@@ -68,6 +85,13 @@ class ApiClient {
     final Map<String, dynamic> decoded = response.body.isEmpty
         ? <String, dynamic>{}
         : jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (kDebugMode) {
+      debugPrint(
+        'API $method $path -> ${response.statusCode}; '
+        'fields: ${decoded.keys.join(', ')}',
+      );
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decoded;

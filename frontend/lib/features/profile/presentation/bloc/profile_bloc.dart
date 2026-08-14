@@ -178,7 +178,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     // Set status to loading and clear previous errors while processing
     emit(state.copyWith(status: BlocStatus.loading, clearError: true));
-    
+
     try {
       // Execute your UpdateProfile usecase contract passing the updated payload
       final PatientProfile profile = await _updateProfile(event.updated);
@@ -192,5 +192,4 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       );
     }
   }
-
 }

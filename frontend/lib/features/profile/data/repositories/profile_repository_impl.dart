@@ -24,13 +24,13 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-Future<PatientProfile> updateProfile(PatientProfile updated) async {
-  try {
-    return await _local.write(updated);
-  } catch (_) {
-    throw const ServerFailure('Could not save your changes.');
+  Future<PatientProfile> updateProfile(PatientProfile updated) async {
+    try {
+      return await _local.write(updated);
+    } catch (_) {
+      throw const ServerFailure('Could not save your changes.');
+    }
   }
-}
 
   @override
   Future<PatientProfile> setEmergencyAlertsEnabled(bool enabled) async {

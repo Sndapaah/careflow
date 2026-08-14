@@ -59,7 +59,10 @@ class _ValidatedFieldState extends State<ValidatedField> {
         ),
         if (isValid)
           Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.xxs, left: AppSpacing.xs),
+            padding: const EdgeInsets.only(
+              top: AppSpacing.xxs,
+              left: AppSpacing.xs,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[

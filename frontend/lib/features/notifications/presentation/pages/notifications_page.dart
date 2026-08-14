@@ -102,10 +102,9 @@ class NotificationsPage extends StatelessWidget {
                                         ),
                                         Text(
                                           item.whenLabel,
-                                          style: AppTextStyles.caption
-                                              .copyWith(
-                                                color: AppColors.textMuted,
-                                              ),
+                                          style: AppTextStyles.caption.copyWith(
+                                            color: AppColors.textMuted,
+                                          ),
                                         ),
                                       ],
                                     ),

@@ -80,7 +80,8 @@ class _LoginView extends StatelessWidget {
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           validator: FieldValidators.email,
-                          onChanged: (String value) => bloc.add(LoginEmailChanged(value)),
+                          onChanged: (String value) =>
+                              bloc.add(LoginEmailChanged(value)),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         ValidatedField(
@@ -88,7 +89,8 @@ class _LoginView extends StatelessWidget {
                           obscureText: true,
                           textInputAction: TextInputAction.done,
                           validator: FieldValidators.password,
-                          onChanged: (String value) => bloc.add(LoginPasswordChanged(value)),
+                          onChanged: (String value) =>
+                              bloc.add(LoginPasswordChanged(value)),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         PrimaryButton(
@@ -116,8 +118,6 @@ class _LoginView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.xxl),
                   AuthFooterPrompt(
-                    // question: 'Already have an account?',
-                    // action: 'Login',
                     question: 'Don\'t have an account?',
                     action: 'Sign Up',
                     onTap: () => context.go(AppRoutes.register),

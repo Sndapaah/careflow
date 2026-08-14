@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/di/injector.dart';
+import '../../../../core/navigation/tab_activation_bus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/careflow_logo.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/facility_recommendation.dart';
 import '../bloc/map_bloc.dart';
@@ -15,10 +20,11 @@ import '../../../../core/services/directions_service.dart';
 import '../widgets/facility_sheet.dart';
 import '../widgets/map_canvas.dart';
 import '../widgets/map_overlays.dart';
+import '../../../../core/utils/phone_launcher.dart';
 
 const String _googleMapsApiKey = String.fromEnvironment(
   'MAPS_API_KEY',
-  defaultValue: 'AIzaSyAHUn48fku0AgMHD1hhDDDBvGTV1qSZDN0',
+  defaultValue: '',
 );
 
 const double _sheetPeekSize = 0.20;
@@ -46,10 +52,159 @@ class _MapView extends StatefulWidget {
   State<_MapView> createState() => _MapViewState();
 }
 
-class _MapViewState extends State<_MapView> {
+class _MapViewState extends State<_MapView> with WidgetsBindingObserver {
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
   GoogleMapController? _mapController;
+  bool _hasLocationPermission = true;
+  bool _requestingLocation = false;
+  bool _permissionPromptVisible = false;
+  bool _isMapTabActive = true;
+  StreamSubscription<int>? _tabActivationSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshLocationPermission(promptIfMissing: true);
+    });
+    _tabActivationSubscription = TabActivationBus.stream.listen((int index) {
+      _isMapTabActive = index == 1;
+      if (!_isMapTabActive || !mounted) return;
+      context.read<MapBloc>().add(const MapOverviewRequested());
+      _refreshLocationPermission(promptIfMissing: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _tabActivationSubscription?.cancel();
+    _sheetController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _isMapTabActive) {
+      _refreshLocationPermission(promptIfMissing: true);
+    }
+  }
+
+  Future<void> _refreshLocationPermission({bool promptIfMissing = false}) async {
+    final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    final LocationPermission permission = await Geolocator.checkPermission();
+    if (!mounted) return;
+    final bool granted =
+        serviceEnabled &&
+        (permission == LocationPermission.always ||
+            permission == LocationPermission.whileInUse);
+    setState(() {
+      _hasLocationPermission = granted;
+    });
+    if (!granted && promptIfMissing) {
+      await _showPermissionPrompt(serviceEnabled, permission);
+    }
+  }
+
+  Future<void> _showPermissionPrompt(
+    bool serviceEnabled,
+    LocationPermission permission,
+  ) async {
+    if (!mounted || _permissionPromptVisible) return;
+    _permissionPromptVisible = true;
+    try {
+      if (!serviceEnabled) {
+        await _showLocationMessage(
+          'Device location is turned off. Turn it on so CareFlow can find nearby care.',
+          actionLabel: 'Open settings',
+          onAction: Geolocator.openLocationSettings,
+        );
+      } else if (permission == LocationPermission.deniedForever) {
+        await _showLocationMessage(
+          'Location access is disabled for CareFlow. Enable it in app settings.',
+          actionLabel: 'Open settings',
+          onAction: Geolocator.openAppSettings,
+        );
+      } else {
+        await _requestLocationPermission();
+      }
+    } finally {
+      _permissionPromptVisible = false;
+    }
+  }
+
+  Future<void> _requestLocationPermission() async {
+    if (_requestingLocation) return;
+    setState(() => _requestingLocation = true);
+
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!mounted) return;
+        await _showLocationMessage(
+          'Turn on device location services so CareFlow can find nearby care.',
+          actionLabel: 'Open settings',
+          onAction: Geolocator.openLocationSettings,
+        );
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        await _showLocationMessage(
+          'Location access is disabled for CareFlow. Enable it in app settings.',
+          actionLabel: 'Open settings',
+          onAction: Geolocator.openAppSettings,
+        );
+        return;
+      }
+
+      final bool granted =
+          permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse;
+      if (!mounted) return;
+      setState(() => _hasLocationPermission = granted);
+      if (granted) {
+        context.read<MapBloc>().add(const MapStarted());
+      }
+    } finally {
+      if (mounted) setState(() => _requestingLocation = false);
+    }
+  }
+
+  Future<void> _showLocationMessage(
+    String message, {
+    required String actionLabel,
+    required Future<bool> Function() onAction,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('Location needed'),
+        content: Text(message),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Not now'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await onAction();
+            },
+            child: Text(actionLabel),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _recenter(MapState state) {
     _mapController?.animateCamera(
@@ -58,7 +213,6 @@ class _MapViewState extends State<_MapView> {
         15.5,
       ),
     );
-    context.read<MapBloc>().add(const MapOverviewRequested());
   }
 
   @override
@@ -75,12 +229,15 @@ class _MapViewState extends State<_MapView> {
               // Map canvas fills background canvas dimensions completely
               Positioned.fill(
                 child: MapCanvas(
+                  // ADDED: Link the route sequence tracker from BLoC state
+                  routeRequestId: state.routeRequestId,
+                  locationPermissionGranted: _hasLocationPermission,
                   facilities: state.recommendations
                       .map((e) => e.facility)
                       .toList(),
                   userPosition: state.userPosition,
                   directionsApiKey: _googleMapsApiKey,
-                  selectedFacilityId: state.sheetVisible
+                  selectedFacilityId: state.mode == MapViewMode.facility
                       ? state.pinnedFacility?.id
                       : null,
                   onMarkerTap: (Facility facility) => context
@@ -111,13 +268,75 @@ class _MapViewState extends State<_MapView> {
               ),
 
               if (state.status.isLoading)
-                const Center(child: CircularProgressIndicator()),
+                const Positioned.fill(child: _MapLoadingOverlay()),
 
               if (state.status.isSuccess && state.sheetVisible)
                 _Sheet(state: state, controller: _sheetController),
+
+              if (!_hasLocationPermission)
+                Positioned(
+                  left: AppSpacing.md,
+                  right: AppSpacing.md,
+                  bottom: AppSpacing.xl,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Text(
+                            'CareFlow needs your location to show nearby facilities and directions.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          FilledButton.icon(
+                            onPressed: _requestingLocation
+                                ? null
+                                : _requestLocationPermission,
+                            icon: _requestingLocation
+                                ? const SizedBox.square(
+                                    dimension: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.location_on),
+                            label: const Text('Allow location access'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _MapLoadingOverlay extends StatelessWidget {
+  const _MapLoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.background.withValues(alpha: 0.92),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const CareFlowHoverLogo(size: 96),
+            const SizedBox(height: AppSpacing.md),
+            Text('Locating the best care nearby', style: AppTextStyles.h3),
+            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(
+              width: 128,
+              child: LinearProgressIndicator(minHeight: 3),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -268,15 +487,7 @@ class _Sheet extends StatelessWidget {
       const SizedBox(height: AppSpacing.xs),
       SelectedFacilityHeader(
         facility: facility,
-        onCall: () => ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                'Calling ${facility.name} — ${facility.phoneNumber}',
-              ),
-            ),
-          ),
+        onCall: () => PhoneLauncher.call(facility.phoneNumber),
         onNavigate: () => controller.animateTo(
           _sheetPeekSize,
           duration: const Duration(milliseconds: 300),

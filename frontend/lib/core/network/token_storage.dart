@@ -9,7 +9,8 @@ class TokenStorage {
   static const String _tokenKey = 'careflow_access_token';
   static const String _userIdKey = 'careflow_user_id';
 
-  Future<void> save(String token) => _storage.write(key: _tokenKey, value: token);
+  Future<void> save(String token) =>
+      _storage.write(key: _tokenKey, value: token);
 
   Future<String?> read() => _storage.read(key: _tokenKey);
 

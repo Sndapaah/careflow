@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Hide local keys and properties files from GitHub commits
+*.properties
+.env*

@@ -11,6 +11,7 @@ import '../../../../core/widgets/app_top_bar.dart';
 import '../../../symptoms/domain/entities/symptom_analysis.dart';
 import '../bloc/emergency_bloc.dart';
 import '../widgets/recommendation_card.dart';
+import '../../../../core/utils/phone_launcher.dart';
 
 /// Single best emergency-capable facility, with a one-tap call action.
 class EmergencyPage extends StatelessWidget {
@@ -90,11 +91,8 @@ class _EmergencyView extends StatelessWidget {
     );
   }
 
-  /// Placing the call needs a platform integration (url_launcher); until that
-  /// is wired the UI confirms the number it would dial.
+  /// Placing the call now uses the phone launcher integration.
   void _showCallSheet(BuildContext context, String name, String number) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Calling $name — $number')));
+    PhoneLauncher.call(number);
   }
 }

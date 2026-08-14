@@ -11,8 +11,6 @@ import '../../domain/entities/facility.dart';
 import '../../domain/entities/facility_recommendation.dart';
 import '../../domain/usecases/facility_usecases.dart';
 
-/// The map sheet has two shapes: the ranked overview, and a single facility
-/// with its live telemetry and call/navigate actions.
 enum MapViewMode { overview, facility }
 
 // ----------------------------------------------------------------- events
@@ -82,6 +80,7 @@ class MapState extends Equatable {
     this.sheetVisible = false,
     this.routeDistanceLabel,
     this.routeDurationLabel,
+    this.routeRequestId = 0,
   });
 
   final BlocStatus status;
@@ -93,6 +92,7 @@ class MapState extends Equatable {
   final bool sheetVisible;
   final String? routeDistanceLabel;
   final String? routeDurationLabel;
+  final int routeRequestId;
 
   /// The highest-ranked recommendation — the card at the top of the sheet.
   FacilityRecommendation? get topMatch =>
@@ -119,6 +119,7 @@ class MapState extends Equatable {
     bool? sheetVisible,
     String? routeDistanceLabel,
     String? routeDurationLabel,
+    int? routeRequestId,
     bool clearSelection = false,
     bool clearError = false,
     bool clearRoute = false,
@@ -136,6 +137,7 @@ class MapState extends Equatable {
     routeDurationLabel: clearRoute
         ? null
         : routeDurationLabel ?? this.routeDurationLabel,
+    routeRequestId: routeRequestId ?? this.routeRequestId,
   );
 
   @override
@@ -145,9 +147,11 @@ class MapState extends Equatable {
     mode,
     selectedId,
     errorMessage,
+    userPosition,
     sheetVisible,
     routeDistanceLabel,
     routeDurationLabel,
+    routeRequestId,
   ];
 }
 
@@ -167,26 +171,23 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   final GetRecommendations _getRecommendations;
   StreamSubscription<Position>? _positionSub;
 
-  void _onRouteResolved(MapRouteResolved event, Emitter<MapState> emit) {
-    emit(
-      state.copyWith(
-        routeDistanceLabel: event.distanceLabel,
-        routeDurationLabel: event.durationLabel,
-      ),
-    );
-  }
-
   Future<void> _onStarted(MapStarted event, Emitter<MapState> emit) async {
     emit(state.copyWith(status: BlocStatus.loading, clearError: true));
 
-    // FIXED: Call the method asynchronously without 'await' and without nested logic
-    // to instantly prevent main thread lockups on app startup.
-    _initLocationTracking();
+    // 1. Immediately clean up past streams to prevent background leaks
+    await _positionSub?.cancel();
+    _positionSub = null;
+
+    // Location tracking can initialize alongside the recommendations request.
+    unawaited(_establishLocationPipeline());
 
     try {
       final List<FacilityRecommendation> results = await _getRecommendations(
         const NoParams(),
       );
+
+      if (isClosed) return;
+
       emit(
         state.copyWith(
           status: BlocStatus.success,
@@ -195,10 +196,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           mode: event.focusFacilityId == null
               ? MapViewMode.overview
               : MapViewMode.facility,
-          sheetVisible: event.focusFacilityId != null,
+          sheetVisible: true,
         ),
       );
     } on Failure catch (failure) {
+      if (isClosed) return;
       emit(
         state.copyWith(
           status: BlocStatus.failure,
@@ -208,49 +210,63 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     }
   }
 
-  Future<void> _initLocationTracking() async {
+  /// Handles permissions, fetches the instant location fix, and attaches the listener safely.
+  Future<void> _establishLocationPipeline() async {
     try {
+      // Guard: Check if physical system settings are enabled
       final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
+      if (!serviceEnabled || isClosed) return;
 
+      // Guard: Validate and request platform-level runtime permissions
       LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever ||
+          isClosed) {
+        return;
       }
-      if (permission == LocationPermission.deniedForever) return;
 
-      // FIXED: Using LocationSettings inside getCurrentPosition to clear the deprecation warning
-      final Position currentPos = await Geolocator.getCurrentPosition(
+      // Grab the rapid, single-frame position fix immediately
+      final Position initialPosition = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-        ),
-        timeLimit: const Duration(seconds: 5),
-      );
-
-      add(
-        MapUserPositionUpdated(
-          LatLng(currentPos.latitude, currentPos.longitude),
+          timeLimit: Duration(seconds: 6),
         ),
       );
 
-      await _positionSub?.cancel();
+      if (!isClosed) {
+        add(
+          MapUserPositionUpdated(
+            LatLng(initialPosition.latitude, initialPosition.longitude),
+          ),
+        );
+      }
 
+      // Safeguard against overlapping double-initialization triggers during async gaps
+      if (_positionSub != null || isClosed) return;
+
+      // Track shifting locations continuously across long periods
       _positionSub =
           Geolocator.getPositionStream(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.high,
-              distanceFilter: 10,
+              distanceFilter: 25,
             ),
-          ).listen((Position position) {
-            add(
-              MapUserPositionUpdated(
-                LatLng(position.latitude, position.longitude),
-              ),
-            );
-          });
+          ).listen(
+            (Position position) {
+              if (!isClosed) {
+                add(
+                  MapUserPositionUpdated(
+                    LatLng(position.latitude, position.longitude),
+                  ),
+                );
+              }
+            },
+            onError: (_) {
+              // Graceful background tracking capture fallback
+            },
+          );
     } catch (_) {
-      // Graceful isolation fallback container
+      // Handle exceptions or time-outs safely without disrupting the UI
     }
   }
 
@@ -261,6 +277,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         mode: MapViewMode.facility,
         sheetVisible: true,
         clearRoute: true,
+        routeRequestId: state.routeRequestId + 1,
       ),
     );
   }
@@ -273,7 +290,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       state.copyWith(
         mode: MapViewMode.overview,
         clearSelection: true,
-        sheetVisible: false,
+        sheetVisible: true,
         clearRoute: true,
       ),
     );
@@ -283,7 +300,25 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     MapUserPositionUpdated event,
     Emitter<MapState> emit,
   ) {
-    emit(state.copyWith(userPosition: event.position));
+    final bool hasSelectedFacility = state.selectedId != null;
+    emit(
+      state.copyWith(
+        userPosition: event.position,
+        // Retry a pending route once a real location replaces the fallback.
+        routeRequestId: hasSelectedFacility
+            ? state.routeRequestId + 1
+            : state.routeRequestId,
+      ),
+    );
+  }
+
+  void _onRouteResolved(MapRouteResolved event, Emitter<MapState> emit) {
+    emit(
+      state.copyWith(
+        routeDistanceLabel: event.distanceLabel,
+        routeDurationLabel: event.durationLabel,
+      ),
+    );
   }
 
   @override

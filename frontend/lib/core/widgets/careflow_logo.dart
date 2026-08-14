@@ -23,8 +23,95 @@ class CareFlowLogo extends StatelessWidget {
   }
 }
 
+/// The fixed ground plane used when animating the pin independently.
+class CareFlowLogoGround extends StatelessWidget {
+  const CareFlowLogoGround({super.key, this.size = 120});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: const _CareFlowLogoPainter(paintPin: false),
+      ),
+    );
+  }
+}
+
+/// The pin, ECG trace, disc, and cross without the ground plane.
+class CareFlowLogoPin extends StatelessWidget {
+  const CareFlowLogoPin({super.key, this.size = 120});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: const _CareFlowLogoPainter(paintGround: false),
+      ),
+    );
+  }
+}
+
+/// Loading treatment that keeps the ground fixed while the pin hovers above it.
+class CareFlowHoverLogo extends StatefulWidget {
+  const CareFlowHoverLogo({super.key, this.size = 120});
+
+  final double size;
+
+  @override
+  State<CareFlowHoverLogo> createState() => _CareFlowHoverLogoState();
+}
+
+class _CareFlowHoverLogoState extends State<CareFlowHoverLogo>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, _) {
+        final double wave = math.sin(_controller.value * math.pi * 2);
+        return SizedBox.square(
+          dimension: widget.size + 8,
+          child: Stack(
+            alignment: Alignment.center,
+            children: <Widget>[
+              CareFlowLogoGround(size: widget.size),
+              Transform.translate(
+                offset: Offset(0, -6 - (wave * 5)),
+                child: Transform.scale(
+                  scale: 1 + (wave * 0.025),
+                  child: CareFlowLogoPin(size: widget.size),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _CareFlowLogoPainter extends CustomPainter {
-  const _CareFlowLogoPainter();
+  const _CareFlowLogoPainter({this.paintGround = true, this.paintPin = true});
+
+  final bool paintGround;
+  final bool paintPin;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -35,11 +122,13 @@ class _CareFlowLogoPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..color = Colors.black;
 
-    _paintGround(canvas, s, outline);
-    _paintPin(canvas, s, outline);
-    _paintEcg(canvas, s);
-    _paintInnerDisc(canvas, s, outline);
-    _paintCross(canvas, s, outline);
+    if (paintGround) _paintGround(canvas, s, outline);
+    if (paintPin) {
+      _paintPin(canvas, s, outline);
+      _paintEcg(canvas, s);
+      _paintInnerDisc(canvas, s, outline);
+      _paintCross(canvas, s, outline);
+    }
   }
 
   /// The flat navy plane the pin stands on.
@@ -155,7 +244,8 @@ class _CareFlowLogoPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_CareFlowLogoPainter oldDelegate) => false;
+  bool shouldRepaint(_CareFlowLogoPainter oldDelegate) =>
+      paintGround != oldDelegate.paintGround || paintPin != oldDelegate.paintPin;
 }
 
 /// Logo stacked above the "CareFlow" wordmark, used on the auth screens.

@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/di/injector.dart';
+import '../../../../core/cache/last_diagnosis_cache.dart';
+import '../../../../core/navigation/tab_activation_bus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -15,6 +19,7 @@ import '../../../profile/domain/usecases/profile_usecases.dart';
 import '../../../symptoms/domain/entities/symptom_analysis.dart';
 import '../bloc/home_bloc.dart';
 import '../widgets/home_widgets.dart';
+import '../../../../core/utils/phone_launcher.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -55,11 +60,39 @@ class _HomeViewState extends State<_HomeView> {
   static const double _morphEnd = 128;
 
   bool _showAllRecentSymptoms = false;
+  Timer? _tipRefreshTimer;
+  StreamSubscription<int>? _tabActivationSubscription;
+  StreamSubscription<void>? _diagnosisSubscription;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _scheduleTipRefresh();
+    _tabActivationSubscription = TabActivationBus.stream.listen((int index) {
+      if (index == 0 && mounted) {
+        context.read<HomeBloc>().add(const HomeStarted());
+      }
+    });
+    _diagnosisSubscription = sl<LastDiagnosisCache>().diagnosisCompleted.listen(
+      (_) {
+        if (mounted) context.read<HomeBloc>().add(const HomeStarted());
+      },
+    );
+  }
+
+  void _scheduleTipRefresh() {
+    _tipRefreshTimer?.cancel();
+    final DateTime now = DateTime.now();
+    final DateTime nextRefresh = now.hour < 12
+        ? DateTime(now.year, now.month, now.day, 12)
+        : DateTime(now.year, now.month, now.day + 1);
+    final Duration untilNextWindow = nextRefresh.difference(now);
+    _tipRefreshTimer = Timer(untilNextWindow, () {
+      if (!mounted) return;
+      context.read<HomeBloc>().add(const HomeStarted());
+      _scheduleTipRefresh();
+    });
   }
 
   void _onScroll() {
@@ -76,6 +109,9 @@ class _HomeViewState extends State<_HomeView> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _barProgress.dispose();
+    _tipRefreshTimer?.cancel();
+    _tabActivationSubscription?.cancel();
+    _diagnosisSubscription?.cancel();
     super.dispose();
   }
 
@@ -119,20 +155,10 @@ class _HomeViewState extends State<_HomeView> {
 
   Future<void> _callEmergencyContact(BuildContext context) async {
     try {
-      final PatientProfile profile =
-          await sl<GetPatientProfile>()(const NoParams());
-      final EmergencyContact contact = profile.emergencyContact;
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                'Calling ${contact.fullName} — ${contact.phoneNumber}',
-              ),
-            ),
-          );
-      }
+      final PatientProfile profile = await sl<GetPatientProfile>()(
+        const NoParams(),
+      );
+      await PhoneLauncher.call(profile.emergencyContact.phoneNumber);
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
@@ -161,8 +187,10 @@ class _HomeViewState extends State<_HomeView> {
                 state.recentSymptoms.length > _recentSymptomsPreviewCount;
             final List<RecentSymptom> visibleSymptoms =
                 _showAllRecentSymptoms || !hasMoreSymptoms
-                    ? state.recentSymptoms
-                    : state.recentSymptoms.take(_recentSymptomsPreviewCount).toList();
+                ? state.recentSymptoms
+                : state.recentSymptoms
+                      .take(_recentSymptomsPreviewCount)
+                      .toList();
 
             return Stack(
               children: <Widget>[
@@ -172,106 +200,112 @@ class _HomeViewState extends State<_HomeView> {
                     controller: _scrollController,
                     padding: const EdgeInsets.only(bottom: AppSpacing.xl),
                     children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.gutter,
-                      AppSpacing.sm,
-                      AppSpacing.gutter,
-                      AppSpacing.md,
-                    ),
-                    child: GreetingHeader(
-                      greeting: state.greeting,
-                      name: state.patientName,
-                      onEmergency: () => _handleEmergencyFlow(context),
-                    ),
-                  ),
-                  const _SectionTitle('Nearby Health Facilities'),
-                  const SizedBox(height: AppSpacing.sm),
-                  if (state.nearby.isNotEmpty)
-                    NearbyFacilitiesStrip(
-                      facilities: state.nearby,
-                      onSelect: (Facility facility) =>
-                          context.push(AppRoutes.facilityDetail(facility.id)),
-                    )
-                  else if (state.isLoadingNearby)
-                    const SizedBox(
-                      height: 178,
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else
-                    const _NearbyEmpty(),
-                  const SizedBox(height: AppSpacing.md),
-                  Padding(
-                    padding: AppSpacing.page,
-                    child: AiBanner(onTap: _symptomFocus.requestFocus),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Padding(
-                    padding: AppSpacing.page,
-                    child: SymptomSearchField(
-                      controller: _symptomController,
-                      focusNode: _symptomFocus,
-                      isEnabled: state.canAnalyze,
-                      onChanged: (String value) =>
-                          bloc.add(HomeSymptomQueryChanged(value)),
-                      onSubmit: () => _analyze(context, state.symptomQuery),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  QuickSymptomChips(
-                    symptoms: state.quickSymptoms,
-                    onSelect: (String symptom) {
-                      _symptomController.text = symptom;
-                      bloc.add(HomeQuickSymptomSelected(symptom));
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Padding(
-                    padding: AppSpacing.page,
-                    child: AdditionalNotesField(controller: _notesController),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  if (state.tip != null)
-                    Padding(
-                      padding: AppSpacing.page,
-                      child: HealthTipCard(tip: state.tip!),
-                    ),
-                  const SizedBox(height: AppSpacing.md),
-                  const _SectionTitle('Recent Symptoms'),
-                  const SizedBox(height: AppSpacing.sm),
-                  for (final RecentSymptom symptom in visibleSymptoms)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.gutter,
-                        0,
-                        AppSpacing.gutter,
-                        AppSpacing.xs,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.gutter,
+                          AppSpacing.sm,
+                          AppSpacing.gutter,
+                          AppSpacing.md,
+                        ),
+                        child: GreetingHeader(
+                          greeting: state.greeting,
+                          name: state.patientName,
+                          onEmergency: () => _handleEmergencyFlow(context),
+                        ),
                       ),
-                      child: RecentSymptomTile(symptom: symptom),
-                    ),
-                  if (hasMoreSymptoms)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.gutter,
-                        AppSpacing.xs,
-                        AppSpacing.gutter,
-                        0,
-                      ),
-                      child: Center(
-                        child: TextButton(
-                          onPressed: () => setState(
-                            () => _showAllRecentSymptoms = !_showAllRecentSymptoms,
+                      const _SectionTitle('Nearby Health Facilities'),
+                      const SizedBox(height: AppSpacing.sm),
+                      if (state.nearby.isNotEmpty)
+                        NearbyFacilitiesStrip(
+                          facilities: state.nearby,
+                          onSelect: (Facility facility) => context.push(
+                            AppRoutes.facilityDetail(facility.id),
                           ),
-                          child: Text(
-                            _showAllRecentSymptoms ? 'Show less' : 'See more',
-                            style: AppTextStyles.bodyLarge.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
+                        )
+                      else if (state.isLoadingNearby)
+                        const SizedBox(
+                          height: 178,
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else
+                        const _NearbyEmpty(),
+                      const SizedBox(height: AppSpacing.md),
+                      Padding(
+                        padding: AppSpacing.page,
+                        child: AiBanner(onTap: _symptomFocus.requestFocus),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Padding(
+                        padding: AppSpacing.page,
+                        child: SymptomSearchField(
+                          controller: _symptomController,
+                          focusNode: _symptomFocus,
+                          isEnabled: state.canAnalyze,
+                          onChanged: (String value) =>
+                              bloc.add(HomeSymptomQueryChanged(value)),
+                          onSubmit: () => _analyze(context, state.symptomQuery),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      QuickSymptomChips(
+                        symptoms: state.quickSymptoms,
+                        onSelect: (String symptom) {
+                          _symptomController.text = symptom;
+                          bloc.add(HomeQuickSymptomSelected(symptom));
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Padding(
+                        padding: AppSpacing.page,
+                        child: AdditionalNotesField(
+                          controller: _notesController,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      if (state.tip != null)
+                        Padding(
+                          padding: AppSpacing.page,
+                          child: HealthTipCard(tip: state.tip!),
+                        ),
+                      const SizedBox(height: AppSpacing.md),
+                      const _SectionTitle('Recent Symptoms'),
+                      const SizedBox(height: AppSpacing.sm),
+                      for (final RecentSymptom symptom in visibleSymptoms)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.gutter,
+                            0,
+                            AppSpacing.gutter,
+                            AppSpacing.xs,
+                          ),
+                          child: RecentSymptomTile(symptom: symptom),
+                        ),
+                      if (hasMoreSymptoms)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.gutter,
+                            AppSpacing.xs,
+                            AppSpacing.gutter,
+                            0,
+                          ),
+                          child: Center(
+                            child: TextButton(
+                              onPressed: () => setState(
+                                () => _showAllRecentSymptoms =
+                                    !_showAllRecentSymptoms,
+                              ),
+                              child: Text(
+                                _showAllRecentSymptoms
+                                    ? 'Show less'
+                                    : 'See more',
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
                     ],
                   ),
                 ),

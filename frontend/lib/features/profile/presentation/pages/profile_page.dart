@@ -170,13 +170,13 @@ class _ProfileBody extends StatelessWidget {
                 title: 'Edit Profile',
                 onTap: () {
                   context.push(
-                AppRoutes.editProfile,
-                  extra: EditProfileArgs(
-                    profile: profile,
-                    bloc: context.read<ProfileBloc>(),
-                  ),
-                );
-              },
+                    AppRoutes.editProfile,
+                    extra: EditProfileArgs(
+                      profile: profile,
+                      bloc: context.read<ProfileBloc>(),
+                    ),
+                  );
+                },
               ),
             ],
           ),

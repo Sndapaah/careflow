@@ -30,14 +30,14 @@ class AuthHttpDataSource implements AuthRemoteDataSource {
   AuthHttpDataSource({
     required ApiClient apiClient,
     required TokenStorage tokenStorage,
-    required UserSessionCache sessionCache,  
+    required UserSessionCache sessionCache,
   }) : _api = apiClient,
-      _tokenStorage = tokenStorage,
-      _sessionCache = sessionCache;          
+       _tokenStorage = tokenStorage,
+       _sessionCache = sessionCache;
 
   final ApiClient _api;
   final TokenStorage _tokenStorage;
-  final UserSessionCache _sessionCache;        
+  final UserSessionCache _sessionCache;
 
   // Held only long enough to auto-login right after OTP verification
   // succeeds, since /verifyOTP/:id returns no token itself. Cleared
@@ -63,7 +63,16 @@ class AuthHttpDataSource implements AuthRemoteDataSource {
       },
     );
 
-    _pendingId = json['id'] as String;
+    final Object? rawId = json['_id'] ?? json['id'];
+    if (rawId is! String || rawId.isEmpty) {
+      final Object? rawMessage = json['message'] ?? json['error'];
+      final String message = rawMessage is String && rawMessage.isNotEmpty
+          ? rawMessage
+          : 'Registration failed.';
+      throw AuthFailure(message);
+    }
+
+    _pendingId = rawId;
     _pendingEmail = email;
     _pendingPassword = password;
 
@@ -110,24 +119,45 @@ class AuthHttpDataSource implements AuthRemoteDataSource {
   }
 
   @override
-Future<AuthUserModel> signIn(String email, String password) async {
-  final Map<String, dynamic> json = await _api.post(
-    '/auth/login',
-    body: <String, dynamic>{'email': email, 'password': password},
-  );
+  Future<AuthUserModel> signIn(String email, String password) async {
+    final Map<String, dynamic> json = await _api.post(
+      '/auth/login',
+      body: <String, dynamic>{'email': email, 'password': password},
+    );
 
-  final Map<String, dynamic> userJson =
-      json['user'] as Map<String, dynamic>;
-  final String? token = userJson['accessToken'] as String?;
-  if (token != null) await _tokenStorage.save(token);
+    // The current backend wraps the user in `user`, while some deployments
+    // return the user fields at the top level. Support both envelopes.
+    final Object? dataField = json['data'];
+    final Map<String, dynamic>? dataJson = dataField is Map<String, dynamic>
+        ? dataField
+        : null;
+    final Object? userField = json['user'] ?? dataJson?['user'];
+    final Map<String, dynamic>? userJson = userField is Map<String, dynamic>
+        ? userField
+        : (dataJson != null &&
+              (dataJson['_id'] != null || dataJson['id'] != null))
+        ? dataJson
+        : (json['_id'] != null || json['id'] != null)
+        ? json
+        : null;
+    if (userJson == null) {
+      final Object? rawMessage = json['message'] ?? json['error'];
+      final String message = rawMessage is String && rawMessage.isNotEmpty
+          ? rawMessage
+          : 'Login response did not contain a user account.';
+      throw AuthFailure(message);
+    }
 
-  final String? userId = userJson['_id'] as String?;
-  if (userId != null) await _tokenStorage.saveUserId(userId);
+    final String? token = userJson['accessToken'] as String?;
+    if (token != null) await _tokenStorage.save(token);
 
-   _sessionCache.store(userJson);
+    final String? userId = userJson['_id'] as String?;
+    if (userId != null) await _tokenStorage.saveUserId(userId);
 
-  return AuthUserModel.fromBackendJson(userJson, isVerified: true);
-}
+    _sessionCache.store(userJson);
+
+    return AuthUserModel.fromBackendJson(userJson, isVerified: true);
+  }
 
   @override
   Future<Duration> resendOtp() async {

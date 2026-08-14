@@ -55,19 +55,22 @@ class EmergencyBloc extends Bloc<EmergencyEvent, EmergencyState> {
   final GetEmergencyMatch _getEmergencyMatch;
 
   Future<void> _onRequested(
-  EmergencyMatchRequested event,
-  Emitter<EmergencyState> emit,
-) async {
-  emit(const EmergencyState(status: BlocStatus.loading));
-  try {
-    final FacilityRecommendation match = await _getEmergencyMatch(
-      const NoParams(), // still NoParams for now — see note below
-    );
-    emit(EmergencyState(status: BlocStatus.success, match: match));
-  } on Failure catch (failure) {
-    emit(
-      EmergencyState(status: BlocStatus.failure, errorMessage: failure.message),
-    );
+    EmergencyMatchRequested event,
+    Emitter<EmergencyState> emit,
+  ) async {
+    emit(const EmergencyState(status: BlocStatus.loading));
+    try {
+      final FacilityRecommendation match = await _getEmergencyMatch(
+        const NoParams(), // still NoParams for now — see note below
+      );
+      emit(EmergencyState(status: BlocStatus.success, match: match));
+    } on Failure catch (failure) {
+      emit(
+        EmergencyState(
+          status: BlocStatus.failure,
+          errorMessage: failure.message,
+        ),
+      );
+    }
   }
-}
 }

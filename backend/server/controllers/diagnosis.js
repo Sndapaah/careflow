@@ -20,19 +20,24 @@ const diagnosePatient = async (req, res) => {
             longitude
         } = req.body;
         
+        const aiSymptoms = (symptoms || []).map(symptom =>
+            typeof symptom === "string" ? { name: symptom } : symptom
+        );
+
         const { data: aiResult } = await axios.post(
             process.env.AI_SERVICE_URL + "/analyze",
             {
                 age,
                 sex,
-                symptoms,
+                symptoms: aiSymptoms,
                 existing_conditions,
                 allergies,
                 medications,
                 additional_information,
                 latitude,
                 longitude
-            }
+            },
+            { timeout: 45000 }
         );
         
         const requiredSpecialties = new Set();
@@ -183,7 +188,7 @@ const diagnosePatient = async (req, res) => {
         })
         const diagnosis = await Diagnosis.create({
             patient: req.user._id,
-            symptoms,
+            symptoms: aiSymptoms,
             possibleConditions: aiResult.possible_conditions,
             severity: aiResult.severity,
             recommendations: aiResult.recommendations,

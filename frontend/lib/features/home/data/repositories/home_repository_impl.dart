@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import '../../domain/entities/health_tip.dart';
 import '../../domain/repositories/home_repository.dart';
 
@@ -35,13 +33,16 @@ class HomeRepositoryImpl implements HomeRepository {
   Future<HealthTip> getDailyTip() async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
 
-    // Seed a Random with the current 12-hour window so the pick is stable
-    // within that window but rotates twice a day (00:00 and 12:00). Day-to-day
-    // it looks shuffled rather than cycling in a visible pattern.
+    // Keep the same tip within each local 12-hour window and guarantee the
+    // next window advances to a different tip.
     final DateTime now = DateTime.now();
     final int halfDay = now.hour < 12 ? 0 : 1;
-    final int seed = now.year * 100000 + now.month * 1000 + now.day * 10 + halfDay;
-    final int index = Random(seed).nextInt(_tips.length);
+    final int day = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).difference(DateTime(2020)).inDays;
+    final int index = (day * 2 + halfDay) % _tips.length;
     return _tips[index];
   }
 

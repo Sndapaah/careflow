@@ -22,6 +22,7 @@ class Facility extends Equatable {
     required this.currentPatients,
     required this.incomingPatients,
     required this.totalBeds,
+    required this.bedCapacity,
     required this.waitMinutes,
     required this.emergencies,
     required this.isEmergencyCapable,
@@ -48,6 +49,7 @@ class Facility extends Equatable {
   final int currentPatients;
   final int incomingPatients;
   final int totalBeds;
+  final int bedCapacity;
   final int waitMinutes;
   final int emergencies;
   final bool isEmergencyCapable;
@@ -81,6 +83,7 @@ class Facility extends Equatable {
     currentPatients,
     incomingPatients,
     totalBeds,
+    bedCapacity,
     waitMinutes,
     emergencies,
     isEmergencyCapable,

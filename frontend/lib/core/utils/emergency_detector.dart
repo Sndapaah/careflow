@@ -19,6 +19,12 @@ class EmergencyDetector {
     'severe allergic reaction',
     'anaphylaxis',
     'choking',
+    'allergic reaction',
+    'anaphylaxis',
+    'anaphylactic',
+    'throat swelling',
+    'tongue swelling',
+    'swelling of lips',
   ];
 
   static bool isEmergency(List<String> symptoms) {

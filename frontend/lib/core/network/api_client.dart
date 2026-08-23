@@ -46,6 +46,12 @@ class ApiClient {
         timeout: timeout,
       );
 
+  Future<Map<String, dynamic>> patch(String path, {Map<String, dynamic>? body, bool authenticated = false}) =>
+      _send('PATCH', path, body: body, authenticated: authenticated);
+
+  Future<Map<String, dynamic>> delete(String path, {bool authenticated = false}) =>
+      _send('DELETE', path, authenticated: authenticated);
+
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {
@@ -68,6 +74,10 @@ class ApiClient {
       response =
           await (method == 'GET'
                   ? _client.get(uri, headers: headers)
+                  : method == 'PATCH'
+                  ? _client.patch(uri, headers: headers, body: body == null ? null : jsonEncode(body))
+                  : method == 'DELETE'
+                  ? _client.delete(uri, headers: headers)
                   : _client.post(
                       uri,
                       headers: headers,

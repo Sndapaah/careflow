@@ -16,4 +16,7 @@ abstract interface class FacilityRepository {
   Future<FacilityRecommendation> getEmergencyMatch();
 
   Future<Facility> getFacilityById(String id);
+  Future<String> startArrival(String facilityId, int etaMinutes, double latitude, double longitude);
+  Future<void> heartbeatArrival(String facilityId, String arrivalId, int etaMinutes, double latitude, double longitude);
+  Future<void> cancelArrival(String facilityId, String arrivalId);
 }

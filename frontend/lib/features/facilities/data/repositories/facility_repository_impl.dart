@@ -52,4 +52,11 @@ class FacilityRepositoryImpl implements FacilityRepository {
       throw const NotFoundFailure('That facility is no longer listed.');
     }
   }
+
+  @override
+  Future<String> startArrival(String facilityId, int etaMinutes, double latitude, double longitude) => _remote.startArrival(facilityId, etaMinutes, latitude, longitude);
+  @override
+  Future<void> heartbeatArrival(String facilityId, String arrivalId, int etaMinutes, double latitude, double longitude) => _remote.heartbeatArrival(facilityId, arrivalId, etaMinutes, latitude, longitude);
+  @override
+  Future<void> cancelArrival(String facilityId, String arrivalId) => _remote.cancelArrival(facilityId, arrivalId);
 }

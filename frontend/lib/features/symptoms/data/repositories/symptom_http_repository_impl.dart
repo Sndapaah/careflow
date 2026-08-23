@@ -210,6 +210,7 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
       currentPatients: currentPatients.round(),
       incomingPatients: 0,
       totalBeds: ((h['availableBeds'] as num?) ?? maxCapacity).round(),
+      bedCapacity: maxCapacity.round(),
       waitMinutes:
           ((h['estimatedWaitingTime'] ?? h['averageWaitingTime']) as num?)
               ?.round() ??

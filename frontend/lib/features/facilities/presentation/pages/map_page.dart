@@ -15,6 +15,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/careflow_logo.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/facility_recommendation.dart';
+import '../../domain/repositories/facility_repository.dart';
 import '../bloc/map_bloc.dart';
 import '../../../../core/services/directions_service.dart';
 import '../widgets/facility_sheet.dart';
@@ -61,6 +62,9 @@ class _MapViewState extends State<_MapView> with WidgetsBindingObserver {
   bool _permissionPromptVisible = false;
   bool _isMapTabActive = true;
   StreamSubscription<int>? _tabActivationSubscription;
+  String? _arrivalId;
+  String? _arrivalFacilityId;
+  Timer? _arrivalHeartbeat;
 
   @override
   void initState() {
@@ -71,7 +75,11 @@ class _MapViewState extends State<_MapView> with WidgetsBindingObserver {
     });
     _tabActivationSubscription = TabActivationBus.stream.listen((int index) {
       _isMapTabActive = index == 1;
-      if (!_isMapTabActive || !mounted) return;
+      if (!_isMapTabActive) {
+        _cancelTrackedArrival();
+        return;
+      }
+      if (!mounted) return;
       context.read<MapBloc>().add(const MapOverviewRequested());
       _refreshLocationPermission(promptIfMissing: true);
     });
@@ -79,10 +87,67 @@ class _MapViewState extends State<_MapView> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _cancelTrackedArrival();
     WidgetsBinding.instance.removeObserver(this);
     _tabActivationSubscription?.cancel();
     _sheetController.dispose();
     super.dispose();
+  }
+
+  Future<void> _trackArrival(RouteResult route) async {
+    final facility = context.read<MapBloc>().state.pinnedFacility;
+    if (facility == null || _arrivalId != null) return;
+    try {
+      final repository = sl<FacilityRepository>();
+      final int etaMinutes = (route.durationSeconds / 60).round().clamp(1, 360);
+      final Position position = await Geolocator.getCurrentPosition();
+      _arrivalFacilityId = facility.id;
+      _arrivalId = await repository.startArrival(
+        facility.id,
+        etaMinutes,
+        position.latitude,
+        position.longitude,
+      );
+      _arrivalHeartbeat = Timer.periodic(const Duration(minutes: 2), (_) async {
+        final id = _arrivalId;
+        if (id == null) return;
+        try {
+          final Position current = await Geolocator.getCurrentPosition();
+          final double metresAway = Geolocator.distanceBetween(
+            current.latitude,
+            current.longitude,
+            facility.latitude,
+            facility.longitude,
+          );
+          if (metresAway <= 150) {
+            await _cancelTrackedArrival();
+            return;
+          }
+          await repository.heartbeatArrival(
+            facility.id,
+            id,
+            etaMinutes,
+            current.latitude,
+            current.longitude,
+          );
+        } catch (_) {}
+      });
+    } catch (_) {
+      _arrivalId = null;
+    }
+  }
+
+  Future<void> _cancelTrackedArrival() async {
+    _arrivalHeartbeat?.cancel();
+    _arrivalHeartbeat = null;
+    final id = _arrivalId;
+    final facilityId = _arrivalFacilityId;
+    _arrivalId = null;
+    _arrivalFacilityId = null;
+    if (id == null || facilityId == null) return;
+    try {
+      await sl<FacilityRepository>().cancelArrival(facilityId, id);
+    } catch (_) {}
   }
 
   @override
@@ -92,7 +157,9 @@ class _MapViewState extends State<_MapView> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _refreshLocationPermission({bool promptIfMissing = false}) async {
+  Future<void> _refreshLocationPermission({
+    bool promptIfMissing = false,
+  }) async {
     final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     final LocationPermission permission = await Geolocator.checkPermission();
     if (!mounted) return;
@@ -243,15 +310,18 @@ class _MapViewState extends State<_MapView> with WidgetsBindingObserver {
                   onMarkerTap: (Facility facility) => context
                       .read<MapBloc>()
                       .add(MapFacilitySelected(facility.id)),
-                  onRouteResolved: (RouteResult route) =>
-                      context.read<MapBloc>().add(
-                        MapRouteResolved(
-                          distanceLabel: route.distanceLabel,
-                          durationLabel: route.durationLabel,
-                        ),
+                  onRouteResolved: (RouteResult route) {
+                    _trackArrival(route);
+                    context.read<MapBloc>().add(
+                      MapRouteResolved(
+                        distanceLabel: route.distanceLabel,
+                        durationLabel: route.durationLabel,
                       ),
-                  onMapReady: (GoogleMapController c) {
-                    _mapController = c;
+                    );
+                    onMapReady:
+                    (GoogleMapController c) {
+                      _mapController = c;
+                    };
                   },
                 ),
               ),

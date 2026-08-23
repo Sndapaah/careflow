@@ -119,8 +119,8 @@ class _DetailBodyState extends State<_DetailBody> {
             Expanded(
               child: StatColumn(
                 icon: Icons.bed_outlined,
-                value: '${facility.totalBeds}',
-                label: 'Total Beds',
+                value: '${facility.totalBeds}/${facility.bedCapacity}',
+                label: 'Beds left',
               ),
             ),
           ],

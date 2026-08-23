@@ -112,8 +112,8 @@ class CapacityRow extends StatelessWidget {
     ),
     CapacityMetric.totalBeds => InlineStat(
       icon: Icons.bed_outlined,
-      label: 'Total Beds',
-      value: '${facility.totalBeds}',
+      label: 'Beds left',
+      value: '${facility.totalBeds}/${facility.bedCapacity}',
       axis: Axis.vertical,
     ),
   };

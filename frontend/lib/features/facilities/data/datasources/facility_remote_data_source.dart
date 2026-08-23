@@ -13,6 +13,9 @@ abstract interface class FacilityRemoteDataSource {
   Future<List<FacilityRecommendation>> fetchRecommendations();
   Future<FacilityRecommendation> fetchEmergencyMatch();
   Future<FacilityModel> fetchById(String id);
+  Future<String> startArrival(String facilityId, int etaMinutes, double latitude, double longitude);
+  Future<void> heartbeatArrival(String facilityId, String arrivalId, int etaMinutes, double latitude, double longitude);
+  Future<void> cancelArrival(String facilityId, String arrivalId);
 }
 
 class FacilityHttpDataSource implements FacilityRemoteDataSource {
@@ -154,8 +157,9 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
           ? FacilityLoad.medium
           : FacilityLoad.low,
       currentPatients: currentPatients.round(),
-      incomingPatients: 0,
+      incomingPatients: ((h['incomingPatients'] as num?) ?? 0).round(),
       totalBeds: ((h['availableBeds'] as num?) ?? maxCapacity).round(),
+      bedCapacity: maxCapacity.round(),
       waitMinutes:
           ((h['estimatedWaitingTime'] ?? h['averageWaitingTime']) as num?)
               ?.round() ??
@@ -179,5 +183,21 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
           const <String>[],
       isLive: (h['isOpen'] as bool?) ?? true,
     );
+  }
+
+  @override
+  Future<String> startArrival(String facilityId, int etaMinutes, double latitude, double longitude) async {
+    final json = await _api.post('/hospitals/$facilityId/arrivals', body: {'etaMinutes': etaMinutes, 'latitude': latitude, 'longitude': longitude}, authenticated: true);
+    return json['arrivalId'].toString();
+  }
+
+  @override
+  Future<void> heartbeatArrival(String facilityId, String arrivalId, int etaMinutes, double latitude, double longitude) async {
+    await _api.patch('/hospitals/$facilityId/arrivals/$arrivalId', body: {'etaMinutes': etaMinutes, 'latitude': latitude, 'longitude': longitude}, authenticated: true);
+  }
+
+  @override
+  Future<void> cancelArrival(String facilityId, String arrivalId) async {
+    await _api.delete('/hospitals/$facilityId/arrivals/$arrivalId', authenticated: true);
   }
 }

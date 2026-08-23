@@ -93,6 +93,13 @@ class _LoginView extends StatelessWidget {
                               bloc.add(LoginPasswordChanged(value)),
                         ),
                         const SizedBox(height: AppSpacing.md),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => context.push(AppRoutes.forgotPassword),
+                            child: const Text('Forgot password?'),
+                          ),
+                        ),
                         PrimaryButton(
                           label: 'Login',
                           borderRadius: AppRadius.xs,

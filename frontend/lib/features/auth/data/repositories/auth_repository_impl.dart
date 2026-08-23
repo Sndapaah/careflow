@@ -44,6 +44,13 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signOut() => _guard(_remote.signOut);
 
+  @override
+  Future<void> requestPasswordReset(String email) => _guard(() => _remote.requestPasswordReset(email));
+
+  @override
+  Future<void> resetPassword({required String email, required String otp, required String password}) =>
+      _guard(() => _remote.resetPassword(email: email, otp: otp, password: password));
+
   /// Lets domain failures through untouched and converts anything else into
   /// a [ServerFailure], so callers only ever see [Failure].
   // Future<T> _guard<T>(Future<T> Function() action) async {

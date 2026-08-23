@@ -23,6 +23,8 @@ abstract interface class AuthRemoteDataSource {
   Future<Duration> resendOtp();
 
   Future<void> signOut();
+  Future<void> requestPasswordReset(String email);
+  Future<void> resetPassword({required String email, required String otp, required String password});
 }
 
 /// Talks to the real CareFlow Express API.
@@ -177,5 +179,15 @@ class AuthHttpDataSource implements AuthRemoteDataSource {
   @override
   Future<void> signOut() async {
     await _tokenStorage.clear();
+  }
+
+  @override
+  Future<void> requestPasswordReset(String email) async {
+    await _api.post('/auth/resetPassword', body: <String, dynamic>{'email': email});
+  }
+
+  @override
+  Future<void> resetPassword({required String email, required String otp, required String password}) async {
+    await _api.post('/auth/reset-user-password', body: <String, dynamic>{'email': email, 'otp': otp, 'password': password});
   }
 }

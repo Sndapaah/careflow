@@ -221,10 +221,13 @@ const resetUserPassword = async (req, res) => {
 }
 
 const resetPasswordAfterVerification = async (req, res) => {
-  const { password, email } = req.body
+  const { password, email, otp } = req.body
   try {
     const user = await Users.findOne({ email })
     if(!user) return res.status(404).json({ message: 'User does not exist'})
+    if (!otp || user.otp !== otp || !user.otpExpires || user.otpExpires <= new Date()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' })
+    }
 
     const samePasswordEntered = await bcrypt.compare(password, user.password)
     if(samePasswordEntered) return res.status(409).json({ message: 'You recently used this password, kindly enter a different one' })
@@ -234,6 +237,8 @@ const resetPasswordAfterVerification = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt)
 
     user.password = hashedPassword
+    user.otp = undefined
+    user.otpExpires = undefined
     await user.save()
 
     res.status(200).json({ message: 'Password reset successful, please login'})

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/otp_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/verification_success_page.dart';
@@ -45,6 +46,7 @@ abstract final class AppRouter {
     routes: <RouteBase>[
       GoRoute(path: AppRoutes.welcome, builder: (_, _) => const WelcomePage()),
       GoRoute(path: AppRoutes.login, builder: (_, _) => const LoginPage()),
+      GoRoute(path: AppRoutes.forgotPassword, builder: (_, _) => const ForgotPasswordPage()),
       GoRoute(
         path: AppRoutes.register,
         builder: (_, _) => const RegisterPage(),

@@ -541,31 +541,14 @@ class RecentSymptomTile extends StatelessWidget {
 }
 
 /// Green card at the foot of the home screen.
-class HealthTipCard extends StatefulWidget {
+class HealthTipCard extends StatelessWidget {
   const HealthTipCard({super.key, required this.tip});
 
   final HealthTip tip;
 
   @override
-  State<HealthTipCard> createState() => _HealthTipCardState();
-}
-
-class _HealthTipCardState extends State<HealthTipCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2200),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final HealthTip tip = widget.tip;
+    final HealthTip tip = this.tip;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -582,7 +565,11 @@ class _HealthTipCardState extends State<HealthTipCard>
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    const Icon(Icons.eco, color: AppColors.success, size: 22),
+                    const Icon(
+                      Icons.eco,
+                      color: Color.fromARGB(255, 34, 151, 88),
+                      size: 22,
+                    ),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
                       tip.title,
@@ -602,24 +589,17 @@ class _HealthTipCardState extends State<HealthTipCard>
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          _AnimatedTipIllustration(
-            tip: tip,
-            animation: CurvedAnimation(
-              parent: _controller,
-              curve: Curves.easeInOut,
-            ),
-          ),
+          _TipIllustration(tip: tip),
         ],
       ),
     );
   }
 }
 
-class _AnimatedTipIllustration extends StatelessWidget {
-  const _AnimatedTipIllustration({required this.tip, required this.animation});
+class _TipIllustration extends StatelessWidget {
+  const _TipIllustration({required this.tip});
 
   final HealthTip tip;
-  final Animation<double> animation;
 
   @override
   Widget build(BuildContext context) {
@@ -637,36 +617,32 @@ class _AnimatedTipIllustration extends StatelessWidget {
         ? Icons.air_rounded
         : Icons.favorite_rounded;
 
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (_, Widget? child) {
-        final double value = animation.value;
-        final Offset offset = icon == Icons.directions_walk_rounded
-            ? Offset((value - 0.5) * 12, 0)
-            : icon == Icons.air_rounded
-            ? Offset((value - 0.5) * 8, (0.5 - value) * 4)
-            : Offset(0, (0.5 - value) * 7);
-        final double scale = icon == Icons.visibility_rounded
-            ? 0.9 + (value * 0.1)
-            : 0.96 + (value * 0.08);
-        return Transform.translate(
-          offset: offset,
-          child: Transform.scale(scale: scale, child: child),
-        );
-      },
-      child: isWater
-          ? const _WaterGlass(size: 76)
-          : Container(
-              width: 76,
-              height: 76,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: AppColors.successSurface,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 38, color: AppColors.success),
+    final Color color = isWater
+        ? const Color(0xFF1687C7)
+        : icon == Icons.bedtime_rounded
+        ? const Color(0xFF7654C6)
+        : icon == Icons.directions_walk_rounded
+        ? const Color(0xFFE07A22)
+        : icon == Icons.wash_rounded
+        ? const Color(0xFF159A9C)
+        : icon == Icons.visibility_rounded
+        ? const Color(0xFFD35B86)
+        : icon == Icons.air_rounded
+        ? const Color(0xFF3E83C4)
+        : const Color(0xFFD94F4F);
+
+    return isWater
+        ? const _WaterGlass(size: 76)
+        : Container(
+            width: 76,
+            height: 76,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
             ),
-    );
+            child: Icon(icon, size: 38, color: color),
+          );
   }
 }
 

@@ -42,7 +42,8 @@ class AppTopBar extends StatelessWidget {
         Text(
           title,
           style: AppTextStyles.h1.copyWith(color: titleColor),
-          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+          softWrap: true,
         ),
         if (subtitle != null)
           Text(

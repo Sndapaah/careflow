@@ -52,5 +52,11 @@ class OnboardingHttpDataSource implements OnboardingRemoteDataSource {
     );
 
     _sessionCache.patch(body);
+    // Keep the durable session in sync with the in-memory cache. Otherwise a
+    // restart loses the personalization fields and the profile appears blank.
+    final Map<String, dynamic>? updatedUser = _sessionCache.current;
+    if (updatedUser != null) {
+      await _tokenStorage.saveUser(updatedUser);
+    }
   }
 }

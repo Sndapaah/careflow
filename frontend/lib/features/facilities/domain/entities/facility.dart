@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:intl/intl.dart';
 
 /// How busy a facility currently is. Drives the coloured load badge.
 enum FacilityLoad {
@@ -34,7 +35,8 @@ class Facility extends Equatable {
     this.departments = const <String>[],
     this.services = const <String>[],
     this.lastUpdatedMinutes,
-    this.isLive = true,
+    this.lastUpdatedAt,
+    this.isLive = false,
   });
 
   final String id;
@@ -62,6 +64,7 @@ class Facility extends Equatable {
 
   /// Minutes since the facility last reported. `null` renders as "N/A".
   final int? lastUpdatedMinutes;
+  final DateTime? lastUpdatedAt;
   final bool isLive;
 
   String get distanceLabel => '${distanceKm.toStringAsFixed(1)} km';
@@ -70,8 +73,9 @@ class Facility extends Equatable {
 
   String get waitLabel => '$waitMinutes min';
 
-  String get lastUpdatedLabel =>
-      lastUpdatedMinutes == null ? 'N/A' : '$lastUpdatedMinutes mins';
+  String get lastUpdatedLabel => lastUpdatedMinutes != null
+      ? '$lastUpdatedMinutes mins'
+      : DateFormat('MM/dd HH:mm').format(lastUpdatedAt ?? DateTime.now());
 
   @override
   List<Object?> get props => <Object?>[

@@ -77,7 +77,7 @@ class RecommendationCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: LabelledValueTile(
-                  label: 'Confidence',
+                  label: 'Care match',
                   value: recommendation.confidence.label,
                   icon: Icons.shield_outlined,
                   background: _tileBackground,
@@ -159,6 +159,7 @@ class _TitleRow extends StatelessWidget {
     final Facility facility = recommendation.facility;
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         if (showRankTag) ...<Widget>[
@@ -168,7 +169,8 @@ class _TitleRow extends StatelessWidget {
         Expanded(
           child: Text(
             facility.name,
-            overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+                softWrap: true,
             style: AppTextStyles.h3.copyWith(fontSize: 19),
           ),
         ),

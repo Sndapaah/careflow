@@ -28,6 +28,16 @@ class _CareFlowAppState extends State<CareFlowApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       routerConfig: _router,
+      builder: (BuildContext context, Widget? child) {
+        final MediaQueryData media = MediaQuery.of(context);
+        // Keep layouts stable on physical devices with large accessibility
+        // fonts while still allowing a modest, readable increase.
+        final double scale = media.textScaler.scale(1).clamp(0.9, 1.2);
+        return MediaQuery(
+          data: media.copyWith(textScaler: TextScaler.linear(scale)),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

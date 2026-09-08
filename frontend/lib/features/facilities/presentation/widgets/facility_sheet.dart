@@ -63,7 +63,7 @@ class LastUpdatedRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.xs),
-        LiveIndicator(isLive: facility.isLive),
+        if (facility.isLive) LiveIndicator(isLive: true),
       ],
     );
   }
@@ -203,7 +203,7 @@ class TopMatchHeader extends StatelessWidget {
             children: <Widget>[
               FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text('Confidence Score', style: AppTextStyles.caption),
+                child: Text('Care match score', style: AppTextStyles.caption),
               ),
               const SizedBox(height: 2),
               FittedBox(
@@ -235,11 +235,13 @@ class SelectedFacilityHeader extends StatelessWidget {
     required this.facility,
     required this.onCall,
     required this.onNavigate,
+    this.activeRouteDistance,
   });
 
   final Facility facility;
   final VoidCallback onCall;
   final VoidCallback onNavigate;
+  final String? activeRouteDistance;
 
   @override
   Widget build(BuildContext context) {
@@ -258,7 +260,7 @@ class SelectedFacilityHeader extends StatelessWidget {
                   Expanded(
                     child: Text(
                       facility.name,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
                       style: AppTextStyles.h2.copyWith(fontSize: 21),
                     ),
                   ),
@@ -279,7 +281,7 @@ class SelectedFacilityHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 2),
                   Text(
-                    '${facility.distanceLabel} away',
+                    '${activeRouteDistance ?? facility.distanceLabel} away',
                     style: AppTextStyles.bodyLarge.copyWith(
                       color: AppColors.textMuted,
                     ),
@@ -436,7 +438,7 @@ class RankedFacilityTile extends StatelessWidget {
               children: <Widget>[
                 Text(
                   facility.name,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                   style: AppTextStyles.h3.copyWith(fontSize: 16),
                 ),
                 const SizedBox(height: 2),

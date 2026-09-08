@@ -5,6 +5,11 @@ import '../../../../core/network/token_storage.dart';
 import '../../domain/entities/patient_profile.dart';
 import 'profile_local_data_source.dart';
 
+String _legacyPatientId(Map<String, dynamic> user) {
+  final String id = (user['_id'] ?? '').toString();
+  return id.substring(0, id.length < 3 ? id.length : 3);
+}
+
 class ProfileHttpDataSource implements ProfileLocalDataSource {
   ProfileHttpDataSource({
     required UserSessionCache sessionCache,
@@ -20,7 +25,9 @@ class ProfileHttpDataSource implements ProfileLocalDataSource {
 
   @override
   Future<PatientProfile> read() async {
-    final Map<String, dynamic>? user = _cache.current;
+    Map<String, dynamic>? user = _cache.current;
+    user ??= await _tokenStorage.readUser();
+    if (user != null) _cache.store(user);
     if (user == null) {
       throw const CacheFailure('Not signed in yet.');
     }
@@ -36,7 +43,9 @@ class ProfileHttpDataSource implements ProfileLocalDataSource {
         user['emergencyContact'] as Map<String, dynamic>?;
 
     return PatientProfile(
-      patientId: (user['_id'] ?? '').toString(),
+      patientId: user['patientNumber'] != null
+          ? (user['patientNumber'] as num).toInt().toString().padLeft(3, '0')
+          : _legacyPatientId(user),
       fullName: (user['fullname'] as String?) ?? '',
       email: (user['email'] as String?) ?? '',
       phoneNumber: (user['contact'] as String?) ?? '',
@@ -96,6 +105,10 @@ class ProfileHttpDataSource implements ProfileLocalDataSource {
       '_notificationsEnabledLocalOnly': profile.notificationsEnabled,
       '_emergencyAlertsEnabledLocalOnly': profile.emergencyAlertsEnabled,
     });
+    final Map<String, dynamic>? updatedUser = _cache.current;
+    if (updatedUser != null) {
+      await _tokenStorage.saveUser(updatedUser);
+    }
 
     return profile;
   }

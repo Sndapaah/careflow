@@ -10,8 +10,18 @@ import '../../../../core/usecases/usecase.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/facility_recommendation.dart';
 import '../../domain/usecases/facility_usecases.dart';
+import '../../../../core/network/api_config.dart';
+import '../../../../core/network/token_storage.dart';
 
 enum MapViewMode { overview, facility }
+
+class ActiveRoute extends Equatable {
+  const ActiveRoute({required this.distance, required this.duration});
+  final String distance;
+  final String duration;
+  @override
+  List<Object?> get props => <Object?>[distance, duration];
+}
 
 // ----------------------------------------------------------------- events
 
@@ -76,10 +86,10 @@ class MapState extends Equatable {
     this.mode = MapViewMode.overview,
     this.selectedId,
     this.errorMessage,
-    this.userPosition = const LatLng(6.6885, -1.6244), // KNUST default
+    // No geographic fallback: the map must represent the device position.
+    this.userPosition = const LatLng(0, 0),
     this.sheetVisible = false,
-    this.routeDistanceLabel,
-    this.routeDurationLabel,
+    this.activeRoute,
     this.routeRequestId = 0,
   });
 
@@ -90,8 +100,7 @@ class MapState extends Equatable {
   final String? errorMessage;
   final LatLng userPosition;
   final bool sheetVisible;
-  final String? routeDistanceLabel;
-  final String? routeDurationLabel;
+  final ActiveRoute? activeRoute;
   final int routeRequestId;
 
   /// The highest-ranked recommendation — the card at the top of the sheet.
@@ -117,8 +126,7 @@ class MapState extends Equatable {
     String? errorMessage,
     LatLng? userPosition,
     bool? sheetVisible,
-    String? routeDistanceLabel,
-    String? routeDurationLabel,
+    ActiveRoute? activeRoute,
     int? routeRequestId,
     bool clearSelection = false,
     bool clearError = false,
@@ -131,12 +139,7 @@ class MapState extends Equatable {
     errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     userPosition: userPosition ?? this.userPosition,
     sheetVisible: sheetVisible ?? this.sheetVisible,
-    routeDistanceLabel: clearRoute
-        ? null
-        : routeDistanceLabel ?? this.routeDistanceLabel,
-    routeDurationLabel: clearRoute
-        ? null
-        : routeDurationLabel ?? this.routeDurationLabel,
+    activeRoute: clearRoute ? null : activeRoute ?? this.activeRoute,
     routeRequestId: routeRequestId ?? this.routeRequestId,
   );
 
@@ -149,8 +152,7 @@ class MapState extends Equatable {
     errorMessage,
     userPosition,
     sheetVisible,
-    routeDistanceLabel,
-    routeDurationLabel,
+    activeRoute,
     routeRequestId,
   ];
 }
@@ -158,9 +160,12 @@ class MapState extends Equatable {
 // ------------------------------------------------------------------- bloc
 
 class MapBloc extends Bloc<MapEvent, MapState> {
-  MapBloc({required GetRecommendations getRecommendations})
-    : _getRecommendations = getRecommendations,
-      super(const MapState()) {
+  MapBloc({
+    required GetNearbyFacilities getNearbyFacilities,
+    required TokenStorage tokenStorage,
+  }) : _getNearbyFacilities = getNearbyFacilities,
+       _tokenStorage = tokenStorage,
+       super(const MapState()) {
     on<MapStarted>(_onStarted);
     on<MapFacilitySelected>(_onFacilitySelected);
     on<MapOverviewRequested>(_onOverviewRequested);
@@ -168,23 +173,57 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapRouteResolved>(_onRouteResolved);
   }
 
-  final GetRecommendations _getRecommendations;
+  final GetNearbyFacilities _getNearbyFacilities;
+  final TokenStorage _tokenStorage;
   StreamSubscription<Position>? _positionSub;
 
   Future<void> _onStarted(MapStarted event, Emitter<MapState> emit) async {
     emit(state.copyWith(status: BlocStatus.loading, clearError: true));
+    final Map<String, dynamic>? saved = await _tokenStorage.readMapState();
+    final double? lat = (saved?['latitude'] as num?)?.toDouble();
+    final double? lng = (saved?['longitude'] as num?)?.toDouble();
+    if (lat != null && lng != null) {
+      emit(
+        state.copyWith(
+          userPosition: LatLng(lat, lng),
+          selectedId: saved?['selectedId'] as String?,
+        ),
+      );
+    }
 
     // 1. Immediately clean up past streams to prevent background leaks
     await _positionSub?.cancel();
     _positionSub = null;
 
     // Location tracking can initialize alongside the recommendations request.
-    unawaited(_establishLocationPipeline());
+    if (ApiConfig.demoMode) {
+      emit(
+        state.copyWith(
+          userPosition: LatLng(ApiConfig.demoLatitude, ApiConfig.demoLongitude),
+        ),
+      );
+    } else {
+      await _establishLocationPipeline();
+    }
 
     try {
-      final List<FacilityRecommendation> results = await _getRecommendations(
+      final List<Facility> nearby = await _getNearbyFacilities(
         const NoParams(),
       );
+      final List<FacilityRecommendation> results = <FacilityRecommendation>[
+        for (int index = 0; index < nearby.length; index++)
+          FacilityRecommendation(
+            facility: nearby[index],
+            rank: index == 0
+                ? MatchRank.top
+                : index == 1
+                ? MatchRank.alternative
+                : MatchRank.last,
+            confidence: ConfidenceLevel.medium,
+            confidenceScore: 50,
+            reasons: const <String>['Near your current location'],
+          ),
+      ];
 
       if (isClosed) return;
 
@@ -219,41 +258,34 @@ class MapBloc extends Bloc<MapEvent, MapState> {
 
       // Guard: Validate and request platform-level runtime permissions
       LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever ||
-          isClosed) {
+      if (permission == LocationPermission.deniedForever || isClosed) {
         return;
       }
-
-      // Grab the rapid, single-frame position fix immediately
-      final Position initialPosition = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 6),
-        ),
-      );
-
-      if (!isClosed) {
-        add(
-          MapUserPositionUpdated(
-            LatLng(initialPosition.latitude, initialPosition.longitude),
-          ),
-        );
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission != LocationPermission.always &&
+            permission != LocationPermission.whileInUse)
+          return;
       }
 
-      // Safeguard against overlapping double-initialization triggers during async gaps
+      // Start listening before requesting a one-off fix. Some emulators time
+      // out on getCurrentPosition even though their location stream is live.
       if (_positionSub != null || isClosed) return;
 
-      // Track shifting locations continuously across long periods
       _positionSub =
           Geolocator.getPositionStream(
             locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high,
-              distanceFilter: 25,
+              accuracy: LocationAccuracy.best,
+              distanceFilter: 5,
             ),
           ).listen(
             (Position position) {
-              if (!isClosed) {
+              final DateTime? timestamp = position.timestamp;
+              final bool isFresh =
+                  timestamp == null ||
+                  DateTime.now().difference(timestamp).abs() <
+                      const Duration(minutes: 10);
+              if (!isClosed && isFresh) {
                 add(
                   MapUserPositionUpdated(
                     LatLng(position.latitude, position.longitude),
@@ -265,6 +297,30 @@ class MapBloc extends Bloc<MapEvent, MapState> {
               // Graceful background tracking capture fallback
             },
           );
+
+      try {
+        final Position currentPosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.best,
+            timeLimit: Duration(seconds: 30),
+          ),
+        );
+        final DateTime? timestamp = currentPosition.timestamp;
+        final bool isFresh =
+            timestamp == null ||
+            DateTime.now().difference(timestamp).abs() <
+                const Duration(minutes: 10);
+        if (!isClosed && isFresh) {
+          add(
+            MapUserPositionUpdated(
+              LatLng(currentPosition.latitude, currentPosition.longitude),
+            ),
+          );
+        }
+      } on TimeoutException {
+        // The active stream remains subscribed and will update the map when
+        // the emulator or device publishes its next location fix.
+      }
     } catch (_) {
       // Handle exceptions or time-outs safely without disrupting the UI
     }
@@ -280,6 +336,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         routeRequestId: state.routeRequestId + 1,
       ),
     );
+    _persistMapState(state.userPosition, event.facilityId);
   }
 
   void _onOverviewRequested(
@@ -294,6 +351,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         clearRoute: true,
       ),
     );
+    _persistMapState(state.userPosition, null);
   }
 
   void _onUserPositionUpdated(
@@ -310,16 +368,26 @@ class MapBloc extends Bloc<MapEvent, MapState> {
             : state.routeRequestId,
       ),
     );
+    _persistMapState(event.position, state.selectedId);
   }
 
   void _onRouteResolved(MapRouteResolved event, Emitter<MapState> emit) {
     emit(
       state.copyWith(
-        routeDistanceLabel: event.distanceLabel,
-        routeDurationLabel: event.durationLabel,
+        activeRoute: ActiveRoute(
+          distance: event.distanceLabel,
+          duration: event.durationLabel,
+        ),
       ),
     );
   }
+
+  Future<void> _persistMapState(LatLng position, String? selectedId) =>
+      _tokenStorage.saveMapState(
+        position.latitude,
+        position.longitude,
+        selectedId,
+      );
 
   @override
   Future<void> close() {

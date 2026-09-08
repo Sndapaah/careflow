@@ -43,6 +43,9 @@ const hospitalSchema = new mongoose.Schema({
         type:Number,
         default:0
     },
+    // Simulated GHIMS/LHIMS-style live counters for the prototype.
+    incomingPatients: { type: Number, default: 0 },
+    emergencies: { type: Number, default: 0 },
     availableDoctors: {
         type:Number,
         default:0

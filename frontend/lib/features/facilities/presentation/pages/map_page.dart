@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart' as ll;
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/di/injector.dart';
@@ -22,13 +23,15 @@ import '../widgets/facility_sheet.dart';
 import '../widgets/map_canvas.dart';
 import '../widgets/map_overlays.dart';
 import '../../../../core/utils/phone_launcher.dart';
+import '../../../../core/network/api_config.dart';
 
-const String _googleMapsApiKey = String.fromEnvironment(
-  'MAPS_API_KEY',
-  defaultValue: '',
-);
+const String _googleMapsApiKey = ApiConfig.googleMapsApiKey;
 
-const double _sheetPeekSize = 0.20;
+// Sheet snap stops, as a fraction of screen height.
+const double _sheetPeek = 0.20; // map-focused: just the grabber + name
+const double _sheetCompact = 0.34; // header + route ETA banner visible
+const double _sheetHalf = 0.58; // header + first stat block
+const double _sheetFull = 0.92; // fully expanded, everything scrollable
 
 /// Live map of the recommended facilities with a draggable detail sheet.
 class MapPage extends StatelessWidget {
@@ -239,7 +242,9 @@ class _MapViewState extends State<_MapView> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() => _hasLocationPermission = granted);
       if (granted) {
-        context.read<MapBloc>().add(const MapStarted());
+        context.read<MapBloc>().add(
+          MapStarted(focusFacilityId: context.read<MapBloc>().state.selectedId),
+        );
       }
     } finally {
       if (mounted) setState(() => _requestingLocation = false);
@@ -273,12 +278,35 @@ class _MapViewState extends State<_MapView> with WidgetsBindingObserver {
     );
   }
 
-  void _recenter(MapState state) {
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(
-        LatLng(state.userPosition.latitude, state.userPosition.longitude),
-        15.5,
-      ),
+  Future<void> _recenter(MapState state) async {
+    if (!_hasLocationPermission) {
+      await _requestLocationPermission();
+      return;
+    }
+    LatLng target = LatLng(
+      state.userPosition.latitude,
+      state.userPosition.longitude,
+    );
+    try {
+      final Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      target = LatLng(position.latitude, position.longitude);
+      if (mounted) {
+        context.read<MapBloc>().add(
+          MapUserPositionUpdated(
+            ll.LatLng(position.latitude, position.longitude),
+          ),
+        );
+      }
+    } catch (_) {
+      // Fall back to the most recent position already held by the map state.
+    }
+    await _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(target, 15.5),
     );
   }
 
@@ -318,10 +346,9 @@ class _MapViewState extends State<_MapView> with WidgetsBindingObserver {
                         durationLabel: route.durationLabel,
                       ),
                     );
-                    onMapReady:
-                    (GoogleMapController c) {
-                      _mapController = c;
-                    };
+                  },
+                  onMapReady: (GoogleMapController controller) {
+                    _mapController = controller;
                   },
                 ),
               ),
@@ -451,16 +478,31 @@ class _Sheet extends StatelessWidget {
   final MapState state;
   final DraggableScrollableController controller;
 
+  List<double> get _snapStops {
+    final bool isOverview = state.mode == MapViewMode.overview;
+    if (isOverview) {
+      return const <double>[_sheetPeek, _sheetHalf, _sheetFull];
+    }
+    final bool hasRoute = state.activeRoute != null;
+    return hasRoute
+        ? const <double>[_sheetPeek, _sheetCompact, _sheetHalf, _sheetFull]
+        : const <double>[_sheetPeek, _sheetHalf, _sheetFull];
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isOverview = state.mode == MapViewMode.overview;
+    final List<double> stops = _snapStops;
 
     return DraggableScrollableSheet(
       controller: controller,
-      initialChildSize: isOverview ? 0.58 : 0.42,
-      minChildSize: _sheetPeekSize,
-      maxChildSize: 0.92,
+      initialChildSize: isOverview ? _sheetHalf : _sheetCompact,
+      minChildSize: stops.first,
+      maxChildSize: stops.last,
       snap: true,
+      // snapSizes takes the *intermediate* stops only —
+      // min/maxChildSize are already implicit snap targets.
+      snapSizes: stops.length > 2 ? stops.sublist(1, stops.length - 1) : null,
       builder: (BuildContext context, ScrollController scrollController) {
         return Container(
           decoration: const BoxDecoration(
@@ -492,6 +534,8 @@ class _Sheet extends StatelessWidget {
       },
     );
   }
+
+  // ... _overviewChildren and _facilityChildren unchanged, except:
 
   // ------------------------------------------------------------- overview
 
@@ -549,17 +593,18 @@ class _Sheet extends StatelessWidget {
     if (selected == null) return <Widget>[const SheetGrabber()];
 
     final Facility facility = selected.facility;
-    final bool hasRouteResolved =
-        state.routeDistanceLabel != null && state.routeDurationLabel != null;
+    final ActiveRoute? activeRoute = state.activeRoute;
+    final bool hasRouteResolved = activeRoute != null;
 
     return <Widget>[
       const SheetGrabber(),
       const SizedBox(height: AppSpacing.xs),
       SelectedFacilityHeader(
         facility: facility,
+        activeRouteDistance: activeRoute?.distance,
         onCall: () => PhoneLauncher.call(facility.phoneNumber),
         onNavigate: () => controller.animateTo(
-          _sheetPeekSize,
+          hasRouteResolved ? _sheetCompact : _sheetPeek,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         ),
@@ -568,8 +613,8 @@ class _Sheet extends StatelessWidget {
       if (hasRouteResolved) ...<Widget>[
         const SizedBox(height: AppSpacing.xs),
         _RouteEtaBanner(
-          distance: state.routeDistanceLabel!,
-          duration: state.routeDurationLabel!,
+          distance: activeRoute.distance,
+          duration: activeRoute.duration,
         ),
       ],
 

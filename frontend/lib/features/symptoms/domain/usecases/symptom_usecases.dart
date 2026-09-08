@@ -2,13 +2,13 @@ import '../../../../core/usecases/usecase.dart';
 import '../entities/symptom_analysis.dart';
 import '../repositories/symptom_repository.dart';
 
-class AnalyzeSymptoms implements UseCase<SymptomAnalysis, List<String>> {
+class AnalyzeSymptoms implements UseCase<SymptomAnalysis, SymptomCheckRequest> {
   const AnalyzeSymptoms(this._repository);
 
   final SymptomRepository _repository;
 
   @override
-  Future<SymptomAnalysis> call(List<String> params) =>
+  Future<SymptomAnalysis> call(SymptomCheckRequest params) =>
       _repository.analyze(params);
 }
 

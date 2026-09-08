@@ -15,6 +15,10 @@ import 'package:careflow_app/features/onboarding/presentation/pages/onboarding_p
 import 'package:careflow_app/features/profile/domain/entities/patient_profile.dart';
 import 'package:careflow_app/features/profile/presentation/pages/profile_page.dart';
 import 'package:careflow_app/features/symptoms/presentation/pages/ai_analysis_page.dart';
+//import 'package:careflow_app/features/symptoms/presentation/bloc/symptom_analysis_bloc.dart';
+// import 'package:careflow_app/features/symptoms/domain/entities/symptom_check_request.dart';
+import 'package:careflow_app/features/symptoms/domain/entities/symptom_analysis.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,7 +54,9 @@ void main() {
     'verification success': const VerificationSuccessPage(),
     'onboarding': const OnboardingPage(),
     'home': const HomePage(),
-    'ai analysis': const AiAnalysisPage(symptoms: <String>['Headache']),
+    'ai analysis': AiAnalysisPage(
+      request: SymptomCheckRequest.fromNames(const <String>['Headache']),
+    ),
     'recommended facilities': const RecommendedFacilitiesPage(),
     'facility detail': const FacilityDetailPage(
       facilityId: 'university-clinic',

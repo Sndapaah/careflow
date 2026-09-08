@@ -19,6 +19,12 @@ abstract final class AppSpacing {
   static const EdgeInsets page = EdgeInsets.symmetric(horizontal: gutter);
 }
 
+/// Responsive horizontal page padding for compact physical screens.
+double pageGutter(BuildContext context) {
+  final double width = MediaQuery.sizeOf(context).width;
+  return width < 360 ? 16 : AppSpacing.gutter;
+}
+
 /// Corner radii.
 abstract final class AppRadius {
   static const double xs = 8;

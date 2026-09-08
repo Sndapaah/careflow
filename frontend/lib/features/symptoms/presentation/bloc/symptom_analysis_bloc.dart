@@ -16,12 +16,12 @@ sealed class SymptomAnalysisEvent extends Equatable {
 }
 
 final class SymptomAnalysisRequested extends SymptomAnalysisEvent {
-  const SymptomAnalysisRequested(this.symptoms);
+  const SymptomAnalysisRequested(this.request);
 
-  final List<String> symptoms;
+  final SymptomCheckRequest request;
 
   @override
-  List<Object?> get props => <Object?>[symptoms];
+  List<Object?> get props => <Object?>[request];
 }
 
 /// The patient can correct the severity the model inferred.
@@ -70,7 +70,7 @@ class SymptomAnalysisBloc
   ) async {
     emit(const SymptomAnalysisState(status: BlocStatus.loading));
     try {
-      final SymptomAnalysis analysis = await _analyzeSymptoms(event.symptoms);
+      final SymptomAnalysis analysis = await _analyzeSymptoms(event.request);
       emit(
         SymptomAnalysisState(status: BlocStatus.success, analysis: analysis),
       );

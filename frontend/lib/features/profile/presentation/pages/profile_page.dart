@@ -194,6 +194,10 @@ class _IdentityCard extends StatelessWidget {
 
   final PatientProfile profile;
 
+  String get _displayPatientId => profile.patientId.length > 3
+      ? profile.patientId.substring(0, 3)
+      : profile.patientId;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -243,7 +247,7 @@ class _IdentityCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Patient ID  •  ${profile.patientId}',
+                      'Patient ID  •  $_displayPatientId',
                       style: AppTextStyles.bodyLarge.copyWith(
                         color: Colors.white.withValues(alpha: 0.9),
                       ),

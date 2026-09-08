@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/di/injector.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/widgets/app_buttons.dart';
 import '../../../../core/widgets/careflow_logo.dart';
 import '../../../../core/widgets/social_auth_row.dart';
@@ -93,18 +93,25 @@ class _LoginView extends StatelessWidget {
                               bloc.add(LoginPasswordChanged(value)),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => context.push(AppRoutes.forgotPassword),
-                            child: const Text('Forgot password?'),
-                          ),
-                        ),
                         PrimaryButton(
                           label: 'Login',
                           borderRadius: AppRadius.xs,
                           isLoading: state.status.isLoading,
                           onPressed: () => bloc.add(const LoginSubmitted()),
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () =>
+                                context.push(AppRoutes.forgotPassword),
+                            child: Text(
+                              'Forgot password?',
+                              style: AppTextStyles.body.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -118,9 +125,6 @@ class _LoginView extends StatelessWidget {
                   SocialAuthRow(
                     onGoogle: () => bloc.add(
                       const LoginWithProviderPressed(SocialProvider.google),
-                    ),
-                    onFacebook: () => bloc.add(
-                      const LoginWithProviderPressed(SocialProvider.facebook),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xxl),

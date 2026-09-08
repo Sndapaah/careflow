@@ -50,10 +50,13 @@ class PrimaryButton extends StatelessWidget {
                 const SizedBox(width: AppSpacing.xs),
               ],
               Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.button.copyWith(color: Colors.white),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: AppTextStyles.button.copyWith(color: Colors.white),
+                  ),
                 ),
               ),
               if (trailingIcon != null) ...<Widget>[
@@ -139,10 +142,13 @@ class SecondaryButton extends StatelessWidget {
               const SizedBox(width: AppSpacing.xs),
             ],
             Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.button.copyWith(color: foreground),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: AppTextStyles.button.copyWith(color: foreground),
+                ),
               ),
             ),
             if (trailingIcon != null) ...<Widget>[

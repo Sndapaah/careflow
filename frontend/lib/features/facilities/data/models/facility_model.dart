@@ -24,28 +24,30 @@ class FacilityModel extends Facility {
     super.departments,
     super.services,
     super.lastUpdatedMinutes,
+    super.lastUpdatedAt,
     super.isLive,
   });
 
   factory FacilityModel.fromJson(Map<String, dynamic> json) {
+    int asInt(Object? value) => value is num ? value.round() : int.tryParse('$value') ?? 0;
     return FacilityModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      distanceKm: (json['distance_km'] as num).toDouble(),
-      etaMinutes: json['eta_minutes'] as int,
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      name: (json['name'] ?? 'Unknown facility').toString(),
+      distanceKm: ((json['distance_km'] ?? json['distance'] ?? 0) as num).toDouble(),
+      etaMinutes: asInt(json['eta_minutes'] ?? json['etaMinutes']),
       load: FacilityLoad.values.firstWhere(
         (FacilityLoad value) => value.name == json['load'],
         orElse: () => FacilityLoad.low,
       ),
-      currentPatients: json['current_patients'] as int? ?? 0,
-      incomingPatients: json['incoming_patients'] as int? ?? 0,
-      totalBeds: json['total_beds'] as int? ?? 0,
-      bedCapacity: json['bed_capacity'] as int? ?? 0,
-      waitMinutes: json['wait_minutes'] as int? ?? 0,
-      emergencies: json['emergencies'] as int? ?? 0,
-      isEmergencyCapable: json['is_emergency_capable'] as bool? ?? false,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
+      currentPatients: asInt(json['current_patients'] ?? json['currentPatients']),
+      incomingPatients: asInt(json['incoming_patients'] ?? json['incomingPatients']),
+      totalBeds: asInt(json['total_beds'] ?? json['availableBeds']),
+      bedCapacity: asInt(json['bed_capacity'] ?? json['maxCapacity']),
+      waitMinutes: asInt(json['wait_minutes'] ?? json['averageWaitingTime']),
+      emergencies: asInt(json['emergencies']),
+      isEmergencyCapable: (json['is_emergency_capable'] ?? json['emergency'] ?? false) as bool,
+      latitude: ((json['latitude'] ?? 0) as num).toDouble(),
+      longitude: ((json['longitude'] ?? 0) as num).toDouble(),
       staffCount: json['staff_count'] as int? ?? 0,
       patientCapacity: json['patient_capacity'] as int? ?? 0,
       phoneNumber: json['phone_number'] as String? ?? '',
@@ -56,6 +58,7 @@ class FacilityModel extends Facility {
           (json['services'] as List<dynamic>?)?.cast<String>() ??
           const <String>[],
       lastUpdatedMinutes: json['last_updated_minutes'] as int?,
+      lastUpdatedAt: DateTime.tryParse(json['last_updated_at'] as String? ?? ''),
       isLive: json['is_live'] as bool? ?? true,
     );
   }
@@ -80,6 +83,7 @@ class FacilityModel extends Facility {
     'departments': departments,
     'services': services,
     'last_updated_minutes': lastUpdatedMinutes,
+    'last_updated_at': lastUpdatedAt?.toIso8601String(),
     'is_live': isLive,
   };
 }

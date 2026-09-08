@@ -5,6 +5,7 @@ const {
     verifyOTPCode_completeSignup,
     reverify_user,
     login,
+    googleLogin,
     resetUserPassword,
     resetPasswordAfterVerification
 } = require('../controllers/auth')
@@ -15,6 +16,7 @@ router.post('/register', register)
 router.post('/verifyOTP/:id', verifyOTPCode_completeSignup)
 router.post('/resend_otp_code/:email', reverify_user)
 router.post('/login', login)
+router.post('/google', googleLogin)
 router.post('/resetPassword', resetUserPassword); //new with otp verification
 router.post('/reset-user-password', resetPasswordAfterVerification); //save password after verification
 router.post('/addPersonalization/:id', addPersonalization)

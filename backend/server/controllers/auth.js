@@ -2,6 +2,8 @@ const Users = require("../models/user")
 const bcrypt = require('bcrypt')
 const { generateOTP, sendOTP } = require('../utils/sendOTP')
 const jwt = require('jsonwebtoken')
+const { OAuth2Client } = require('google-auth-library')
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 const register = async (req, res) => {
   const {
@@ -16,9 +18,7 @@ const register = async (req, res) => {
     if(!contact) return res.status(404).json({ message: 'Your contact is required to complete registration' })
     if(!password) return res.status(404).json({ message: 'Your password is required to complete registration' })
     
-    // const alreadyExisting = await Users.findOne({ email, contact }) 
-    // if(alreadyExisting) return res.status(400).json({ message: 'Account already exist' })
-    const alreadyExisting = await Users.findOne({ email })
+    const alreadyExisting = await Users.findOne({ email, contact }) 
     if(alreadyExisting) return res.status(400).json({ message: 'Account already exist' })
 
     const saltRounds = 10
@@ -80,12 +80,12 @@ const verifyOTPCode_completeSignup = async (req, res) => {
     }
   } catch(err) {
     console.error(err)
-    res.status(500).json({ message: 'An error occured verifying OTP.' })
+    res.status(500).json({ message: 'An error occured verifying OTP.', err })
   }
 }
 
 const reverify_user = async (req, res) => {
-  const { email } = req.params
+  const { email } = req.query
   try {
     const user = await Users.findOne({ email }).collation({ locale: 'en', strength: 2 });
     if(!user) return res.status(404).json({ message: 'No such account, please register' })
@@ -99,8 +99,8 @@ const reverify_user = async (req, res) => {
     user.save()
     
     res.status(200).json({ 
-      id: user._id,
-      email: user.email,
+      id: newUser._id,
+      email: newUser.email,
       message: 'OTP sent to your email', 
     })
   } catch(err) {
@@ -194,6 +194,21 @@ const login = async (req, res) => {
   }
 }
 
+const googleLogin = async (req, res) => {
+  try {
+    const ticket = await googleClient.verifyIdToken({ idToken: req.body.idToken, audience: process.env.GOOGLE_CLIENT_ID })
+    const payload = ticket.getPayload()
+    if (!payload?.sub || !payload.email) return res.status(401).json({ message: 'Invalid Google account.' })
+    let user = await Users.findOne({ googleId: payload.sub })
+    if (!user) user = await Users.findOne({ email: payload.email })
+    if (!user) user = await Users.create({ fullname: payload.name || payload.email.split('@')[0], email: payload.email, contact: 'Google account', password: require('crypto').randomBytes(32).toString('hex'), googleId: payload.sub, isAuthenticated: true })
+    else if (!user.googleId) { user.googleId = payload.sub; user.isAuthenticated = true; await user.save() }
+    const { password, ...rest } = user._doc
+    const accessToken = jwt.sign({ _id: user._id, email: user.email, fullname: user.fullname, contact: user.contact, role: user.role }, process.env.JWT_SECRET, { expiresIn: '180d' })
+    res.status(200).json({ user: { ...rest, accessToken } })
+  } catch (error) { console.error('Google login error', error); res.status(401).json({ message: 'Google sign-in failed.' }) }
+}
+
 const resetUserPassword = async (req, res) => {
   const { email } = req.body
   try {
@@ -209,8 +224,8 @@ const resetUserPassword = async (req, res) => {
     user.save()
     
     res.status(200).json({ 
-      id: user._id,
-      email: user.email,
+      id: newUser._id,
+      email: newUser.email,
       message: 'OTP sent to your email', 
     })
     
@@ -221,13 +236,10 @@ const resetUserPassword = async (req, res) => {
 }
 
 const resetPasswordAfterVerification = async (req, res) => {
-  const { password, email, otp } = req.body
+  const { password, email } = req.body
   try {
-    const user = await Users.findOne({ email })
+    const user = await User.findOne({ email })
     if(!user) return res.status(404).json({ message: 'User does not exist'})
-    if (!otp || user.otp !== otp || !user.otpExpires || user.otpExpires <= new Date()) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' })
-    }
 
     const samePasswordEntered = await bcrypt.compare(password, user.password)
     if(samePasswordEntered) return res.status(409).json({ message: 'You recently used this password, kindly enter a different one' })
@@ -237,8 +249,6 @@ const resetPasswordAfterVerification = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt)
 
     user.password = hashedPassword
-    user.otp = undefined
-    user.otpExpires = undefined
     await user.save()
 
     res.status(200).json({ message: 'Password reset successful, please login'})
@@ -254,6 +264,7 @@ module.exports = {
   reverify_user,
   addPersonalization,
   login,
+  googleLogin,
   resetUserPassword,
   resetPasswordAfterVerification
 }

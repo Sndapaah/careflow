@@ -2,7 +2,7 @@ import '../entities/symptom_analysis.dart';
 
 abstract interface class SymptomRepository {
   /// Runs the CareFlow AI symptom checker.
-  Future<SymptomAnalysis> analyze(List<String> symptoms);
+  Future<SymptomAnalysis> analyze(SymptomCheckRequest request);
 
   /// One-tap suggestions under the search field on Home.
   Future<List<String>> getQuickSymptoms();

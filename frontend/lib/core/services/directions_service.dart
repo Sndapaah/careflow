@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
@@ -42,7 +43,12 @@ class DirectionsService {
       },
     );
 
-    final http.Response response = await http.get(uri);
+    http.Response response;
+    try {
+      response = await http.get(uri).timeout(const Duration(seconds: 12));
+    } catch (_) {
+      return null;
+    }
     if (response.statusCode != 200) return null;
 
     final Map<String, dynamic> json =

@@ -7,8 +7,7 @@ const userSchema = new mongoose.Schema({
     },
     email: {
         type: String,
-        required: true,
-        unique: true,
+        required: true
     },
     contact: {
         type: String,
@@ -18,6 +17,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    googleId: { type: String, unique: true, sparse: true },
     gender: {
         type: String,
         enum: ['male', 'female'],

@@ -20,15 +20,15 @@ import '../bloc/symptom_analysis_bloc.dart';
 /// Shows what the symptom checker inferred, and lets the patient correct the
 /// severity before searching for facilities.
 class AiAnalysisPage extends StatelessWidget {
-  const AiAnalysisPage({super.key, required this.symptoms});
+  const AiAnalysisPage({super.key, required this.request});
 
-  final List<String> symptoms;
+  final SymptomCheckRequest request;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<SymptomAnalysisBloc>(
       create: (_) =>
-          sl<SymptomAnalysisBloc>()..add(SymptomAnalysisRequested(symptoms)),
+          sl<SymptomAnalysisBloc>()..add(SymptomAnalysisRequested(request)),
       child: const _AiAnalysisView(),
     );
   }
@@ -346,7 +346,7 @@ class _ConditionsCard extends StatelessWidget {
               ),
               Flexible(
                 child: Text(
-                  'Confidence Score',
+                  'Model likelihood',
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption,
                 ),
@@ -380,6 +380,11 @@ class _ConditionsCard extends StatelessWidget {
             ),
           const SizedBox(height: AppSpacing.xs),
           Text(SymptomAnalysis.disclaimer, style: AppTextStyles.caption),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            'These percentages are estimates, not measured diagnostic accuracy.',
+            style: AppTextStyles.caption,
+          ),
         ],
       ),
     );
@@ -507,12 +512,15 @@ class _SeverityPill extends StatelessWidget {
               color: isSelected ? AppColors.primary : AppColors.border,
             ),
           ),
-          child: Text(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
             level.label,
             style: AppTextStyles.bodyLarge.copyWith(
               color: AppColors.primary,
               fontWeight: FontWeight.w600,
               fontSize: 17,
+            ),
             ),
           ),
         ),

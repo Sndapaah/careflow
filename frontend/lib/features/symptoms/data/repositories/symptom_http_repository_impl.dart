@@ -36,7 +36,7 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
   ];
 
   @override
-  Future<SymptomAnalysis> analyze(List<String> symptoms) async {
+  Future<SymptomAnalysis> analyze(SymptomCheckRequest request) async {
     final (double lat, double lng) = await _location.getCurrent();
 
     int age = 0;
@@ -47,7 +47,7 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
       //      final PatientProfile profile = await _profile.getPatientProfile();
       final PatientProfile profile = await _profile.getProfile();
       age = DateTime.now().difference(profile.dateOfBirth).inDays ~/ 365;
-      sex = profile.gender.name;
+      sex = profile.gender == Gender.male ? 'M' : 'F';
       conditions = profile.conditions;
       allergies = profile.allergies;
     } catch (_) {
@@ -61,11 +61,19 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
       body: <String, dynamic>{
         'age': age,
         'sex': sex,
-        'symptoms': symptoms,
+        'symptoms': request.symptoms
+            .map(
+              (SymptomDetail symptom) => <String, dynamic>{
+                'name': symptom.name,
+                'severity': symptom.severity,
+                'duration': symptom.duration,
+              },
+            )
+            .toList(),
         'existing_conditions': conditions,
         'allergies': allergies,
-        'medications': const <String>[],
-        'additional_information': '',
+        'medications': request.medications,
+        'additional_information': request.additionalInformation,
         'latitude': lat,
         'longitude': lng,
       },
@@ -86,7 +94,7 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
     if (recommendations.isNotEmpty) _cache.store(recommendations);
     _cache.markDiagnosisCompleted();
 
-    return _mapAnalysis(symptoms, analysis);
+    return _mapAnalysis(request.names, analysis);
   }
 
   SymptomAnalysis _mapAnalysis(
@@ -208,14 +216,14 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
           ? FacilityLoad.medium
           : FacilityLoad.low,
       currentPatients: currentPatients.round(),
-      incomingPatients: 0,
+      incomingPatients: ((h['incomingPatients'] as num?) ?? 0).round(),
       totalBeds: ((h['availableBeds'] as num?) ?? maxCapacity).round(),
       bedCapacity: maxCapacity.round(),
       waitMinutes:
           ((h['estimatedWaitingTime'] ?? h['averageWaitingTime']) as num?)
               ?.round() ??
           0,
-      emergencies: 0,
+      emergencies: ((h['emergencies'] as num?) ?? 0).round(),
       isEmergencyCapable: (h['emergency'] as bool?) ?? false,
       latitude: lat,
       longitude: lng,

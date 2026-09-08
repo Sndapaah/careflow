@@ -20,24 +20,19 @@ const diagnosePatient = async (req, res) => {
             longitude
         } = req.body;
         
-        const aiSymptoms = (symptoms || []).map(symptom =>
-            typeof symptom === "string" ? { name: symptom } : symptom
-        );
-
         const { data: aiResult } = await axios.post(
             process.env.AI_SERVICE_URL + "/analyze",
             {
                 age,
                 sex,
-                symptoms: aiSymptoms,
+                symptoms,
                 existing_conditions,
                 allergies,
                 medications,
                 additional_information,
                 latitude,
                 longitude
-            },
-            { timeout: 45000 }
+            }
         );
         
         const requiredSpecialties = new Set();
@@ -170,6 +165,8 @@ const diagnosePatient = async (req, res) => {
 
             return {
                 ...hospital.toObject(),
+                incomingPatients: hospital.incomingPatients || 0,
+                emergencies: hospital.emergencies || 0,
                 distance: Number(distance.toFixed(2)),
                 score,
                 occupancy: Number(occupancy),
@@ -186,29 +183,15 @@ const diagnosePatient = async (req, res) => {
             }
             return b.score - a.score;
         })
-        if (aiResult.safety?.urgency === 'emergency') {
-            const emergencyCandidates = rankedHospitals.filter((hospital) =>
-                hospital.emergency === true && hospital.isAcceptingEmergencyCases !== false
-            );
-            const wellResourced = emergencyCandidates.filter((hospital) =>
-                hospital.maxCapacity > 0 && (hospital.availableBeds / hospital.maxCapacity) >= 0.6
-            );
-            const selected = (wellResourced.length > 0 ? wellResourced : emergencyCandidates)[0];
-            if (selected) {
-                const safeBeds = selected.maxCapacity > 0 && (selected.availableBeds / selected.maxCapacity) >= 0.6;
-                selected.whyRecommended = [
-                    ...(selected.whyRecommended || []),
-                    safeBeds ? 'Emergency-enabled facility with at least 60% beds available.' : 'Call the facility before travelling: no nearby emergency facility has at least 60% beds available.'
-                ];
-            }
-        }
+        const recommendationLimit = aiResult.safety?.urgency === "emergency" ? 1 : 3;
         const diagnosis = await Diagnosis.create({
             patient: req.user._id,
-            symptoms: aiSymptoms,
+            symptoms,
             possibleConditions: aiResult.possible_conditions,
             severity: aiResult.severity,
             recommendations: aiResult.recommendations,
-            recommendedHospitals: (aiResult.safety?.urgency === 'emergency' ? rankedHospitals.slice(0, 1) : rankedHospitals.slice(0, 3))
+            recommendedHospitals: rankedHospitals
+                .slice(0, recommendationLimit)
                 .map(h => h._id),
 
             safety: aiResult.safety
@@ -218,7 +201,7 @@ const diagnosePatient = async (req, res) => {
             success: true,
             diagnosisId: diagnosis._id,
             analysis: aiResult,
-            recommended_hospitals: aiResult.safety?.urgency === 'emergency' ? rankedHospitals.slice(0, 1) : rankedHospitals.slice(0, 3)
+            recommended_hospitals: rankedHospitals.slice(0, recommendationLimit)
         });
     } catch (error) {
         console.error(error.stack);

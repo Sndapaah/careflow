@@ -68,6 +68,7 @@ class _RegisterView extends StatelessWidget {
                     'Create new account',
                     style: AppTextStyles.bodyLarge.copyWith(
                       fontSize: 20,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.textMuted,
                     ),
                   ),
@@ -127,11 +128,6 @@ class _RegisterView extends StatelessWidget {
                   SocialAuthRow(
                     onGoogle: () => bloc.add(
                       const RegisterWithProviderPressed(SocialProvider.google),
-                    ),
-                    onFacebook: () => bloc.add(
-                      const RegisterWithProviderPressed(
-                        SocialProvider.facebook,
-                      ),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),

@@ -40,10 +40,10 @@ class SymptomRepositoryImpl implements SymptomRepository {
       };
 
   @override
-  Future<SymptomAnalysis> analyze(List<String> symptoms) async {
+  Future<SymptomAnalysis> analyze(SymptomCheckRequest request) async {
     await Future<void>.delayed(_latency);
 
-    final List<String> cleaned = symptoms
+    final List<String> cleaned = request.names
         .map((String s) => s.trim())
         .where((String s) => s.isNotEmpty)
         .toList();

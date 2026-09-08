@@ -1,24 +1,36 @@
 import 'package:geolocator/geolocator.dart';
 
+import '../error/failure.dart';
+
 /// Single place every repository asks for "where is the user right now".
-/// Falls back to KNUST's coordinates if a fix can't be obtained quickly.
 class CurrentLocationProvider {
   const CurrentLocationProvider();
 
-  static const double _fallbackLat = 6.6885;
-  static const double _fallbackLng = -1.6244;
-
   Future<(double lat, double lng)> getCurrent() async {
     try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw const LocationFailure('Location services are turned off.');
+      }
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission != LocationPermission.always &&
+          permission != LocationPermission.whileInUse) {
+        throw const LocationFailure('Location permission was not granted.');
+      }
       final Position position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 6),
+          accuracy: LocationAccuracy.bestForNavigation,
+          timeLimit: Duration(seconds: 30),
         ),
       );
       return (position.latitude, position.longitude);
     } catch (_) {
-      return (_fallbackLat, _fallbackLng);
+      throw const LocationFailure(
+        'Your device has not provided a location yet. Check location services and try again.',
+      );
     }
   }
 }

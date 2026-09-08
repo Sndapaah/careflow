@@ -51,8 +51,11 @@ dependencies:
   google_maps_flutter_android: ^2.14.0
   google_maps_flutter_platform_interface: ^2.16.0
   url_launcher: ^6.3.1
+  google_sign_in: ^6.2.2
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.14.4
+
   flutter_test:
     sdk: flutter
 
@@ -62,6 +65,14 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/app_icon.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/app_icon.png
+  adaptive_icon_foreground_inset: 28
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -73,6 +84,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+      - assets/app_icon.png
       - assets/legal/careflow_terms_and_conditions.pdf
 
   # To add assets to your application, add an assets section, like this:

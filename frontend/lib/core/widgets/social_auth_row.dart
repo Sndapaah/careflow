@@ -28,80 +28,46 @@ class OrDivider extends StatelessWidget {
   }
 }
 
-/// The Google + Facebook button pair shared by Welcome, Login and Sign Up.
+/// A full-width Google authentication button matching your updated interface.
 class SocialAuthRow extends StatelessWidget {
-  const SocialAuthRow({super.key, this.onGoogle, this.onFacebook});
+  const SocialAuthRow({super.key, this.onGoogle});
 
   final VoidCallback? onGoogle;
-  final VoidCallback? onFacebook;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: _SocialButton(
-              label: 'Google',
-              onTap: onGoogle,
-              mark: const _GoogleMark(),
-            ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+      child: Container(
+        height: 54,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F9FA), // Subtle grey-white layout filling
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFFCCCCCC), // Light grey outline border
+            width: 1.0,
           ),
-          const SizedBox(width: AppSpacing.xl),
-          Expanded(
-            child: _SocialButton(
-              label: 'facebook',
-              onTap: onFacebook,
-              mark: const _FacebookMark(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SocialButton extends StatelessWidget {
-  const _SocialButton({required this.label, required this.mark, this.onTap});
-
-  final String label;
-  final Widget mark;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surfaceMuted,
-      borderRadius: BorderRadius.circular(AppRadius.xs),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.xs),
-        child: Container(
-          height: 62,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.xs),
-            boxShadow: AppShadows.subtle,
-            color: AppColors.surfaceMuted,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              mark,
-              const SizedBox(width: AppSpacing.xs),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
+        ),
+        child: Material(
+          color: Colors.transparent, // Inherits container styling boundaries
+          child: InkWell(
+            onTap: onGoogle,
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const _GoogleMark(),
+                const SizedBox(width: 12),
+                Text(
+                  'Google',
                   style: AppTextStyles.body.copyWith(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -109,14 +75,14 @@ class _SocialButton extends StatelessWidget {
   }
 }
 
-/// Google "G" approximated with the four brand colours.
+/// Natively rendered official Google "G" brand mark asset component.
 class _GoogleMark extends StatelessWidget {
   const _GoogleMark();
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: 26,
+    return const SizedBox.square(
+      dimension: 24, // Official production size metric
       child: CustomPaint(painter: const _GooglePainter()),
     );
   }
@@ -127,69 +93,67 @@ class _GooglePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Scales the official coordinate map to your designated widget frame size
     final double s = size.shortestSide;
-    final Rect rect = Rect.fromLTWH(s * 0.09, s * 0.09, s * 0.82, s * 0.82);
-    final Paint arc = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = s * 0.22
-      ..strokeCap = StrokeCap.butt;
+    final double scale = s / 48.0;
 
-    // Sweeps roughly matching the Google logo quadrants.
-    canvas.drawArc(rect, -0.35, -1.55, false, arc..color = AppColors.googleRed);
-    canvas.drawArc(
-      rect,
-      -1.9,
-      -1.5,
-      false,
-      arc..color = const Color(0xFFFBBC05),
-    );
-    canvas.drawArc(
-      rect,
-      3.0,
-      -1.6,
-      false,
-      arc..color = const Color(0xFF34A853),
-    );
-    canvas.drawArc(
-      rect,
-      -0.35,
-      1.35,
-      false,
-      arc..color = const Color(0xFF4285F4),
-    );
+    canvas.save();
+    canvas.scale(scale);
 
-    // The horizontal bar of the "G".
-    canvas.drawRect(
-      Rect.fromLTWH(s * 0.5, s * 0.42, s * 0.42, s * 0.17),
-      Paint()..color = const Color(0xFF4285F4),
-    );
+    final Paint paint = Paint()..style = PaintingStyle.fill;
+
+    // 1. Official RED Top Quadrant Path
+    final Path redPath = Path()
+      ..moveTo(24, 9.5)
+      ..cubicTo(27.54, 9.5, 30.71, 10.72, 33.21, 13.1)
+      ..lineTo(40.06, 6.25)
+      ..cubicTo(35.9, 2.38, 30.47, 0, 24, 0)
+      ..cubicTo(14.62, 0, 6.51, 5.38, 2.56, 13.22)
+      ..lineTo(10.54, 19.41)
+      ..cubicTo(12.43, 13.72, 17.74, 9.5, 24, 9.5)
+      ..close();
+    canvas.drawPath(redPath, paint..color = const Color(0xFFEA4335));
+
+    // 2. Official BLUE Right Crossbar & Arc Path
+    final Path bluePath = Path()
+      ..moveTo(46.5, 24)
+      ..cubicTo(46.5, 22.37, 46.35, 20.78, 46.08, 19.25)
+      ..lineTo(24, 19.25)
+      ..lineTo(24, 28.25)
+      ..lineTo(36.75, 28.25)
+      ..cubicTo(36.2, 31.2, 34.53, 33.7, 32.02, 35.38)
+      ..lineTo(39.37, 41.08)
+      ..cubicTo(43.72, 36.56, 46.5, 30.8, 46.5, 24)
+      ..close();
+    canvas.drawPath(bluePath, paint..color = const Color(0xFF4285F4));
+
+    // 3. Official YELLOW Left Arc Path
+    final Path yellowPath = Path()
+      ..moveTo(10.54, 28.59)
+      ..cubicTo(10.06, 27.14, 9.78, 25.6, 9.78, 24)
+      ..cubicTo(9.78, 22.4, 10.06, 20.86, 10.54, 19.41)
+      ..lineTo(2.56, 13.22)
+      ..cubicTo(0.92, 16.46, 0, 20.12, 0, 24)
+      ..cubicTo(0, 27.88, 0.92, 31.54, 2.56, 34.78)
+      ..lineTo(10.54, 28.59)
+      ..close();
+    canvas.drawPath(yellowPath, paint..color = const Color(0xFFFBBC05));
+
+    // 4. Official GREEN Bottom Arc Path
+    final Path greenPath = Path()
+      ..moveTo(24, 48)
+      ..cubicTo(30.48, 48, 35.93, 45.87, 39.89, 42.19)
+      ..lineTo(32.54, 36.49)
+      ..cubicTo(30.43, 37.9, 27.73, 38.75, 24, 38.75)
+      ..cubicTo(17.74, 38.75, 12.43, 34.53, 10.54, 28.84)
+      ..lineTo(2.56, 35.03)
+      ..cubicTo(6.51, 42.62, 14.62, 48, 24, 48)
+      ..close();
+    canvas.drawPath(greenPath, paint..color = const Color(0xFF34A853));
+
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(_GooglePainter oldDelegate) => false;
-}
-
-class _FacebookMark extends StatelessWidget {
-  const _FacebookMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 26,
-      height: 26,
-      decoration: const BoxDecoration(
-        color: AppColors.facebookBlue,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        'f',
-        style: AppTextStyles.h3.copyWith(
-          color: Colors.white,
-          fontSize: 19,
-          height: 1.1,
-        ),
-      ),
-    );
-  }
 }

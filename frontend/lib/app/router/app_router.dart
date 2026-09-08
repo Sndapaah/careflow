@@ -8,6 +8,7 @@ import '../../features/auth/presentation/pages/otp_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/verification_success_page.dart';
 import '../../features/auth/presentation/pages/welcome_page.dart';
+import '../../features/splash/presentation/pages/splash_screen.dart';
 import '../../features/facilities/presentation/pages/emergency_page.dart';
 import '../../features/facilities/presentation/pages/facility_detail_page.dart';
 import '../../features/facilities/presentation/pages/map_page.dart';
@@ -41,9 +42,10 @@ abstract final class AppRouter {
 
   static GoRouter build() => GoRouter(
     navigatorKey: _rootKey,
-    initialLocation: AppRoutes.welcome,
+    initialLocation: AppRoutes.splash,
     // initialLocation: AppRoutes.home,
     routes: <RouteBase>[
+      GoRoute(path: AppRoutes.splash, builder: (_, _) => const SplashScreen()),
       GoRoute(path: AppRoutes.welcome, builder: (_, _) => const WelcomePage()),
       GoRoute(path: AppRoutes.login, builder: (_, _) => const LoginPage()),
       GoRoute(path: AppRoutes.forgotPassword, builder: (_, _) => const ForgotPasswordPage()),
@@ -74,9 +76,15 @@ abstract final class AppRouter {
       GoRoute(
         path: AppRoutes.analysis,
         parentNavigatorKey: _rootKey,
-        builder: (_, GoRouterState state) => AiAnalysisPage(
-          symptoms: (state.extra as List<String>?) ?? const <String>[],
-        ),
+        builder: (_, GoRouterState state) {
+          final Object? extra = state.extra;
+          final SymptomCheckRequest request = extra is SymptomCheckRequest
+              ? extra
+              : SymptomCheckRequest.fromNames(
+                  extra is List<String> ? extra : const <String>[],
+                );
+          return AiAnalysisPage(request: request);
+        },
       ),
       GoRoute(
         path: AppRoutes.recommendations,

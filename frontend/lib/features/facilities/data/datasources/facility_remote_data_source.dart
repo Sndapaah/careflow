@@ -5,6 +5,7 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/location/current_location_provider.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/facility_model.dart';
+import 'package:geolocator/geolocator.dart';
 
 /// Boundary the repository talks to. The HTTP implementation below hits the
 /// CareFlow backend's /hospitals/recommend endpoint.
@@ -34,8 +35,27 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
   Future<List<Map<String, dynamic>>> _recommend({
     List<String> specialties = const <String>[],
     String urgency = 'routine',
+    bool includeAll = false,
+    int resultLimit = 3,
   }) async {
     final (double lat, double lng) = await _location.getCurrent();
+    if (includeAll) {
+      final Map<String, dynamic> json = await _api.get('/hospitals/getHs');
+      final List<Map<String, dynamic>> hospitals =
+          (json['hospitals'] as List<dynamic>? ?? const <dynamic>[])
+              .cast<Map<String, dynamic>>();
+      for (final Map<String, dynamic> hospital in hospitals) {
+        final Map<String, dynamic>? location = hospital['location'] as Map<String, dynamic>?;
+        final List<dynamic> coordinates = location?['coordinates'] as List<dynamic>? ?? const <dynamic>[];
+        if (coordinates.length >= 2) {
+          hospital['distance'] = Geolocator.distanceBetween(
+            lat, lng, (coordinates[1] as num).toDouble(), (coordinates[0] as num).toDouble(),
+          ) / 1000;
+        }
+      }
+      hospitals.sort((a, b) => (a['distance'] as num? ?? double.infinity).compareTo(b['distance'] as num? ?? double.infinity));
+      return hospitals.take(resultLimit).toList();
+    }
     final Map<String, dynamic> json = await _api.post(
       '/hospitals/recommend',
       body: <String, dynamic>{
@@ -43,6 +63,8 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
         'longitude': lng,
         'required_specialties': specialties,
         'urgency': urgency,
+        'include_all': includeAll,
+        'limit': resultLimit,
       },
     );
     if (json['success'] != true) {
@@ -53,15 +75,20 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
 
   @override
   Future<List<FacilityModel>> fetchNearby() async {
-    final List<Map<String, dynamic>> hospitals = await _recommend();
+    final List<Map<String, dynamic>> hospitals = await _recommend(
+      includeAll: true,
+      resultLimit: 20,
+    );
     return hospitals.map(_toFacilityModel).toList();
   }
 
   @override
   Future<List<FacilityRecommendation>> fetchRecommendations() async {
     final List<FacilityRecommendation>? cached = _cache.fresh;
-    if (cached != null) return cached;
-    final List<Map<String, dynamic>> hospitals = await _recommend();
+    if (cached != null) return cached.take(3).toList();
+    final List<Map<String, dynamic>> hospitals = await _recommend(
+      resultLimit: 3,
+    );
     return _toRecommendations(hospitals);
   }
 
@@ -71,6 +98,7 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
     if (cached != null && cached.isNotEmpty) return cached.first;
     final List<Map<String, dynamic>> hospitals = await _recommend(
       urgency: 'emergency',
+      resultLimit: 1,
     );
     if (hospitals.isEmpty) {
       throw const NotFoundFailure('No emergency-capable facility found.');
@@ -83,10 +111,32 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
     final List<FacilityRecommendation>? cached = _cache.fresh;
     if (cached != null) {
       for (final FacilityRecommendation r in cached) {
-        if (r.facility.id == id) return r.facility as FacilityModel;
+        if (r.facility.id == id) {
+          final Facility f = r.facility;
+          return _toFacilityModel(<String, dynamic>{
+            '_id': f.id,
+            'name': f.name,
+            'distance': f.distanceKm,
+            'latitude': f.latitude,
+            'longitude': f.longitude,
+            'maxCapacity': f.bedCapacity,
+            'currentPatients': f.currentPatients,
+            'availableBeds': f.totalBeds,
+            'availableDoctors': f.staffCount,
+            'averageWaitingTime': f.waitMinutes,
+            'emergency': f.isEmergencyCapable,
+            'phone': f.phoneNumber,
+            'specialties': f.departments,
+            'services': f.services,
+            'isOpen': f.isLive,
+          });
+        }
       }
     }
-    final List<Map<String, dynamic>> hospitals = await _recommend();
+    final List<Map<String, dynamic>> hospitals = await _recommend(
+      includeAll: true,
+      resultLimit: 1000,
+    );
     final List<FacilityModel> models = hospitals.map(_toFacilityModel).toList();
     return models.firstWhere(
       (FacilityModel f) => f.id == id,
@@ -133,8 +183,12 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
         h['location'] as Map<String, dynamic>?;
     final List<dynamic> coords =
         location?['coordinates'] as List<dynamic>? ?? <dynamic>[0, 0];
-    final double lng = (coords[0] as num).toDouble();
-    final double lat = (coords.length > 1 ? coords[1] as num : 0).toDouble();
+    // The hospital recommendation endpoint returns flat latitude/longitude
+    // fields; retain GeoJSON support for cached or alternate responses.
+    final double lng = (h['longitude'] as num?)?.toDouble() ??
+        (coords.isNotEmpty ? (coords[0] as num).toDouble() : 0);
+    final double lat = (h['latitude'] as num?)?.toDouble() ??
+        (coords.length > 1 ? (coords[1] as num).toDouble() : 0);
     final num maxCapacity = (h['maxCapacity'] as num?) ?? 0;
     final num currentPatients = (h['currentPatients'] as num?) ?? 0;
     final double occupancyPct = maxCapacity == 0
@@ -164,7 +218,7 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
           ((h['estimatedWaitingTime'] ?? h['averageWaitingTime']) as num?)
               ?.round() ??
           0,
-      emergencies: 0,
+      emergencies: ((h['emergencies'] as num?) ?? 0).round(),
       isEmergencyCapable: (h['emergency'] as bool?) ?? false,
       latitude: lat,
       longitude: lng,
@@ -182,6 +236,7 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
               .toList() ??
           const <String>[],
       isLive: (h['isOpen'] as bool?) ?? true,
+      lastUpdatedAt: DateTime.tryParse(h['lastUpdated'] as String? ?? ''),
     );
   }
 

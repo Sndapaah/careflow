@@ -4,6 +4,8 @@ import '../../../../core/network/token_storage.dart';
 import '../../../../core/cache/user_session_cache.dart';
 import '../../domain/entities/auth_user.dart';
 import '../models/auth_user_model.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import '../../../../core/network/api_config.dart';
 
 /// Boundary the repository talks to.
 abstract interface class AuthRemoteDataSource {
@@ -157,6 +159,7 @@ class AuthHttpDataSource implements AuthRemoteDataSource {
     if (userId != null) await _tokenStorage.saveUserId(userId);
 
     _sessionCache.store(userJson);
+    await _tokenStorage.saveUser(userJson);
 
     return AuthUserModel.fromBackendJson(userJson, isVerified: true);
   }
@@ -173,7 +176,41 @@ class AuthHttpDataSource implements AuthRemoteDataSource {
 
   @override
   Future<AuthUserModel> signInWithProvider(SocialProvider provider) {
-    throw const ServerFailure('Social sign-in is not available yet.');
+    if (provider != SocialProvider.google) {
+      throw const ServerFailure('This sign-in provider is not available yet.');
+    }
+    return _signInWithGoogle();
+  }
+
+  Future<AuthUserModel> _signInWithGoogle() async {
+    final GoogleSignInAccount? account = await GoogleSignIn(
+      serverClientId: ApiConfig.googleServerClientId.isEmpty
+          ? null
+          : ApiConfig.googleServerClientId,
+    ).signIn();
+    if (account == null) throw const AuthFailure('Google sign-in was cancelled.');
+    final GoogleSignInAuthentication auth = await account.authentication;
+    final String? idToken = auth.idToken;
+    if (idToken == null || idToken.isEmpty) {
+      throw const AuthFailure('Google did not return an identity token.');
+    }
+    final Map<String, dynamic> json = await _api.post(
+      '/auth/google',
+      body: <String, dynamic>{'idToken': idToken},
+    );
+    final Map<String, dynamic>? user = json['user'] is Map
+        ? Map<String, dynamic>.from(json['user'] as Map)
+        : null;
+    final String? token = user?['accessToken'] as String?;
+    final String? userId = user?['_id']?.toString();
+    if (user == null || token == null || userId == null) {
+      throw AuthFailure((json['message'] ?? 'Google sign-in failed.').toString());
+    }
+    await _tokenStorage.save(token);
+    await _tokenStorage.saveUserId(userId);
+    _sessionCache.store(user);
+    await _tokenStorage.saveUser(user);
+    return AuthUserModel.fromBackendJson(user, isVerified: true);
   }
 
   @override

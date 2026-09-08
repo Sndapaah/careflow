@@ -11,6 +11,59 @@ enum SeverityLevel {
   final String label;
 }
 
+class SymptomDetail extends Equatable {
+  const SymptomDetail({
+    required this.name,
+    required this.severity,
+    required this.duration,
+    this.onset = '',
+    this.location = '',
+  });
+
+  final String name;
+  final String severity;
+  final String duration;
+  final String onset;
+  final String location;
+
+  @override
+  List<Object?> get props => <Object?>[name, severity, duration, onset, location];
+}
+
+class SymptomCheckRequest extends Equatable {
+  const SymptomCheckRequest({
+    required this.symptoms,
+    this.additionalInformation = '',
+    this.medications = const <String>[],
+  });
+
+  factory SymptomCheckRequest.fromNames(List<String> names) =>
+      SymptomCheckRequest(
+        symptoms: names
+            .map(
+              (String name) => SymptomDetail(
+                name: name,
+                severity: 'moderate',
+                duration: 'Not specified',
+              ),
+            )
+            .toList(),
+      );
+
+  final List<SymptomDetail> symptoms;
+  final String additionalInformation;
+  final List<String> medications;
+
+  List<String> get names => symptoms.map((SymptomDetail s) => s.name).toList();
+
+  @override
+  List<Object?> get props => <Object?>[
+    symptoms,
+    additionalInformation,
+    medications,
+  ];
+}
+
 /// One candidate condition with the model's confidence in it.
 class PossibleCondition extends Equatable {
   const PossibleCondition({required this.name, required this.confidence});

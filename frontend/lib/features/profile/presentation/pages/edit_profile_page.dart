@@ -92,9 +92,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   void _toggle(Set<String> set, String value) {
     setState(() {
-      if (set.contains(value)) {
+      if (value == MedicalProfileDraft.noneOption) {
+        if (set.contains(value)) {
+          set.remove(value);
+        } else {
+          set
+            ..clear()
+            ..add(value);
+        }
+      } else if (set.contains(value)) {
         set.remove(value);
       } else {
+        set.remove(MedicalProfileDraft.noneOption);
         set.add(value);
       }
     });

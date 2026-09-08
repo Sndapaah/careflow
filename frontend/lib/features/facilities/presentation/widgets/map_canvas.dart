@@ -77,6 +77,20 @@ class _MapCanvasState extends State<MapCanvas> {
   @override
   void didUpdateWidget(covariant MapCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final bool positionChanged =
+        oldWidget.userPosition.latitude != widget.userPosition.latitude ||
+        oldWidget.userPosition.longitude != widget.userPosition.longitude;
+    if (positionChanged && widget.selectedFacilityId == null) {
+      _controller?.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(
+            widget.userPosition.latitude,
+            widget.userPosition.longitude,
+          ),
+          15.5,
+        ),
+      );
+    }
     // FIXED: Now checks routeRequestId tracking index changes to cleanly capture repeat navigation signals
     if (widget.selectedFacilityId != null &&
         widget.routeRequestId != _lastFetchedRequestId) {
@@ -105,34 +119,42 @@ class _MapCanvasState extends State<MapCanvas> {
       return;
     }
 
-    if (widget.userPosition.latitude == 6.6885 &&
-        widget.userPosition.longitude == -1.6244) {
-      return;
-    }
-
+    final ll.LatLng origin = ll.LatLng(
+      widget.userPosition.latitude,
+      widget.userPosition.longitude,
+    );
+    final ll.LatLng destination = ll.LatLng(
+      facility.latitude,
+      facility.longitude,
+    );
     setState(() => _loadingRoute = true);
-    final RouteResult? result = await _directions.getRoute(
-      origin: ll.LatLng(
-        widget.userPosition.latitude,
-        widget.userPosition.longitude,
-      ),
-      destination: ll.LatLng(facility.latitude, facility.longitude),
+    final RouteResult? networkResult = await _directions.getRoute(
+      origin: origin,
+      destination: destination,
     );
     if (!mounted) return;
 
+    // Never draw a straight origin-to-destination segment as a route. It is
+    // geographically misleading and usually means the Directions API did
+    // not return a valid road route (missing/invalid key, quota, or no route).
+    final RouteResult? result = networkResult;
+    if (result == null || result.points.length < 2) {
+      setState(() {
+        _loadingRoute = false;
+        _routePoints = <LatLng>[];
+      });
+      return;
+    }
+
     setState(() {
       _loadingRoute = false;
-      _routePoints = result == null
-          ? <LatLng>[]
-          : result.points
-                .map((ll.LatLng p) => LatLng(p.latitude, p.longitude))
-                .toList();
+      _routePoints = result.points
+          .map((ll.LatLng p) => LatLng(p.latitude, p.longitude))
+          .toList();
     });
 
-    if (result != null) {
-      widget.onRouteResolved?.call(result);
-      _fitBounds(facility);
-    }
+    widget.onRouteResolved?.call(result);
+    _fitBounds(facility);
   }
 
   void _fitBounds(Facility facility) {

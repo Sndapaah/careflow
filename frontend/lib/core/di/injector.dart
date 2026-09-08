@@ -176,7 +176,7 @@ void _registerBlocs() {
     )
     ..registerFactory(() {
       final Map<String, dynamic>? user = sl<UserSessionCache>().current;
-      final String name = (user?['fullname'] as String?) ?? 'there';
+      final String name = (user?['fullname'] as String? ?? '').trim();
       return HomeBloc(
         getNearbyFacilities: sl<GetNearbyFacilities>(),
         getQuickSymptoms: sl<GetQuickSymptoms>(),
@@ -199,7 +199,7 @@ void _registerBlocs() {
       () => EmergencyBloc(getEmergencyMatch: sl<GetEmergencyMatch>()),
     )
     ..registerFactory(
-      () => MapBloc(getRecommendations: sl<GetRecommendations>()),
+      () => MapBloc(getNearbyFacilities: sl<GetNearbyFacilities>(), tokenStorage: sl<TokenStorage>()),
     )
     ..registerFactory(
       () => ProfileBloc(

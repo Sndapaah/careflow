@@ -20,6 +20,7 @@ import '../../../symptoms/domain/entities/symptom_analysis.dart';
 import '../bloc/home_bloc.dart';
 import '../widgets/home_widgets.dart';
 import '../../../../core/utils/phone_launcher.dart';
+import 'package:flutter/services.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -115,23 +116,31 @@ class _HomeViewState extends State<_HomeView> {
     super.dispose();
   }
 
-  void _analyze(BuildContext context, String query) {
+  Future<void> _analyze(BuildContext context, String query) async {
     final List<String> symptoms = query
         .split(RegExp(r'[,\n]'))
         .map((String s) => s.trim())
         .where((String s) => s.isNotEmpty)
         .toList();
 
-    final String notes = _notesController.text.trim();
-    if (notes.isNotEmpty) {
-      symptoms.add('Additional notes: $notes');
-    }
-
     if (symptoms.isEmpty) return;
-    context.push(AppRoutes.analysis, extra: symptoms);
+    final SymptomCheckRequest? request =
+        await showModalBottomSheet<SymptomCheckRequest>(
+          context: context,
+          isScrollControlled: true,
+          builder: (BuildContext context) => _SymptomDetailsSheet(
+            symptoms: symptoms,
+            initialNotes: _notesController.text.trim(),
+          ),
+        );
+    if (request != null && context.mounted) {
+      await context.push(AppRoutes.analysis, extra: request);
+    }
   }
 
   Future<void> _handleEmergencyFlow(BuildContext context) async {
+    // Give immediate tactile confirmation before showing the safety dialog.
+    await HapticFeedback.heavyImpact();
     final bool? proceed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -342,6 +351,171 @@ class _SectionTitle extends StatelessWidget {
     return Padding(
       padding: AppSpacing.page,
       child: Text(title, style: AppTextStyles.h2.copyWith(fontSize: 21)),
+    );
+  }
+}
+
+class _SymptomDetailsSheet extends StatefulWidget {
+  const _SymptomDetailsSheet({
+    required this.symptoms,
+    required this.initialNotes,
+  });
+
+  final List<String> symptoms;
+  final String initialNotes;
+
+  @override
+  State<_SymptomDetailsSheet> createState() => _SymptomDetailsSheetState();
+}
+
+class _SymptomDetailsSheetState extends State<_SymptomDetailsSheet> {
+  String _severity = 'moderate';
+  String _duration = '1-3 days';
+  String _onset = 'gradual';
+  late final TextEditingController _notesController = TextEditingController(
+    text: widget.initialNotes,
+  );
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _medicationsController = TextEditingController();
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    _locationController.dispose();
+    _medicationsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.md,
+          AppSpacing.gutter,
+          MediaQuery.viewInsetsOf(context).bottom + AppSpacing.md,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text('Symptom details', style: AppTextStyles.h2),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                widget.symptoms.join(', '),
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<String>(
+                initialValue: _severity,
+                decoration: const InputDecoration(labelText: 'Severity'),
+                items: const <DropdownMenuItem<String>>[
+                  DropdownMenuItem(value: 'mild', child: Text('Mild')),
+                  DropdownMenuItem(value: 'moderate', child: Text('Moderate')),
+                  DropdownMenuItem(value: 'severe', child: Text('Severe')),
+                ],
+                onChanged: (String? value) =>
+                    setState(() => _severity = value ?? _severity),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              DropdownButtonFormField<String>(
+                initialValue: _duration,
+                decoration: const InputDecoration(labelText: 'Duration'),
+                items: const <DropdownMenuItem<String>>[
+                  DropdownMenuItem(
+                    value: 'Less than 24 hours',
+                    child: Text('Less than 24 hours'),
+                  ),
+                  DropdownMenuItem(value: '1-3 days', child: Text('1-3 days')),
+                  DropdownMenuItem(value: '4-7 days', child: Text('4-7 days')),
+                  DropdownMenuItem(
+                    value: 'More than 1 week',
+                    child: Text('More than 1 week'),
+                  ),
+                ],
+                onChanged: (String? value) =>
+                    setState(() => _duration = value ?? _duration),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              DropdownButtonFormField<String>(
+                initialValue: _onset,
+                decoration: const InputDecoration(labelText: 'Onset'),
+                items: const <DropdownMenuItem<String>>[
+                  DropdownMenuItem(value: 'sudden', child: Text('Sudden')),
+                  DropdownMenuItem(value: 'gradual', child: Text('Gradual')),
+                ],
+                onChanged: (String? value) =>
+                    setState(() => _onset = value ?? _onset),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _locationController,
+                decoration: const InputDecoration(
+                  labelText: 'Location (if relevant)',
+                  hintText: 'For example, lower right abdomen',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _medicationsController,
+                decoration: const InputDecoration(
+                  labelText: 'Current medications',
+                  hintText: 'Separate multiple medications with commas',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _notesController,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Additional information',
+                  hintText: 'Onset, location, triggers, or related symptoms',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(
+                label: 'Analyze symptoms',
+                onPressed: () {
+                  final List<String> medications = _medicationsController.text
+                      .split(',')
+                      .map((String value) => value.trim())
+                      .where((String value) => value.isNotEmpty)
+                      .toList();
+                  final String location = _locationController.text.trim();
+                  final String notes = _notesController.text.trim();
+                  final String contextDetails = <String>[
+                    'Onset: $_onset',
+                    if (location.isNotEmpty) 'Location: $location',
+                    if (notes.isNotEmpty) notes,
+                  ].join('. ');
+                  Navigator.of(context).pop(
+                    SymptomCheckRequest(
+                      symptoms: widget.symptoms
+                          .map(
+                            (String name) => SymptomDetail(
+                              name: name,
+                              severity: _severity,
+                              duration: _duration,
+                              onset: _onset,
+                              location: location,
+                            ),
+                          )
+                          .toList(),
+                      medications: medications,
+                      additionalInformation: contextDetails,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -76,7 +76,6 @@ class WelcomePage extends StatelessWidget {
                       const SizedBox(height: AppSpacing.lg),
                       SocialAuthRow(
                         onGoogle: () => _showComingSoon(context, 'Google'),
-                        onFacebook: () => _showComingSoon(context, 'Facebook'),
                       ),
                       const Spacer(),
                       AuthFooterPrompt(

@@ -63,10 +63,35 @@ class _AiAnalysisView extends StatelessWidget {
                     return Center(
                       child: Padding(
                         padding: AppSpacing.page,
-                        child: Text(
-                          state.errorMessage ?? 'Something went wrong.',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.bodyLarge,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            const Icon(
+                              Icons.cloud_off_rounded,
+                              size: 52,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              state.errorMessage ?? 'Something went wrong.',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.bodyLarge,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            PrimaryButton(
+                              label: 'Try Again',
+                              trailingIcon: Icons.refresh_rounded,
+                              onPressed: state.request == null
+                                  ? null
+                                  : () => context
+                                        .read<SymptomAnalysisBloc>()
+                                        .add(
+                                          SymptomAnalysisRequested(
+                                            state.request!,
+                                          ),
+                                        ),
+                            ),
+                          ],
                         ),
                       ),
                     );

@@ -1,0 +1,11 @@
+﻿node_modules/
+build/
+.dart_tool/
+**/.env
+__pycache__/
+*.pyc
+.venv/
+backend/ai-service/data/ddxplus/*.zip
+backend/ai-service/data/ddxplus/train/
+backend/ai-service/data/ddxplus/test/
+backend/ai-service/data/ddxplus/validate/

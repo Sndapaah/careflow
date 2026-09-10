@@ -4,6 +4,16 @@ const { generateOTP, sendOTP } = require('../utils/sendOTP')
 const jwt = require('jsonwebtoken')
 const { OAuth2Client } = require('google-auth-library')
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+const Counter = require('../models/counter')
+
+async function nextPatientNumber() {
+  const counter = await Counter.findOneAndUpdate(
+    { _id: 'patientNumber' },
+    { $inc: { sequence: 1 } },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  )
+  return counter.sequence
+}
 
 const register = async (req, res) => {
   const {
@@ -28,7 +38,8 @@ const register = async (req, res) => {
       fullname,
       email,
       contact,
-      password: hashedPass
+      password: hashedPass,
+      patientNumber: await nextPatientNumber(),
     })
     await newUser.save()
     // send OTP
@@ -196,12 +207,17 @@ const login = async (req, res) => {
 
 const googleLogin = async (req, res) => {
   try {
+    if (foundUser.patientNumber == null) {
+      foundUser.patientNumber = await nextPatientNumber()
+      await foundUser.save()
+    }
     const ticket = await googleClient.verifyIdToken({ idToken: req.body.idToken, audience: process.env.GOOGLE_CLIENT_ID })
     const payload = ticket.getPayload()
     if (!payload?.sub || !payload.email) return res.status(401).json({ message: 'Invalid Google account.' })
     let user = await Users.findOne({ googleId: payload.sub })
     if (!user) user = await Users.findOne({ email: payload.email })
-    if (!user) user = await Users.create({ fullname: payload.name || payload.email.split('@')[0], email: payload.email, contact: 'Google account', password: require('crypto').randomBytes(32).toString('hex'), googleId: payload.sub, isAuthenticated: true })
+    if (!user) user = await Users.create({ fullname: payload.name || payload.email.split('@')[0], email: payload.email, contact: 'Google account', password: require('crypto').randomBytes(32).toString('hex'), googleId: payload.sub, patientNumber: await nextPatientNumber(), isAuthenticated: true })
+    else if (user.patientNumber == null) { user.patientNumber = await nextPatientNumber(); await user.save() }
     else if (!user.googleId) { user.googleId = payload.sub; user.isAuthenticated = true; await user.save() }
     const { password, ...rest } = user._doc
     const accessToken = jwt.sign({ _id: user._id, email: user.email, fullname: user.fullname, contact: user.contact, role: user.role }, process.env.JWT_SECRET, { expiresIn: '180d' })

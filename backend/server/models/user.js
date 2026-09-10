@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
         required: true
     },
     googleId: { type: String, unique: true, sparse: true },
+    patientNumber: { type: Number, unique: true, sparse: true },
     gender: {
         type: String,
         enum: ['male', 'female'],

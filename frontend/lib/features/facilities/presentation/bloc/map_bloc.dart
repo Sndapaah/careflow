@@ -77,6 +77,10 @@ final class MapRouteResolved extends MapEvent {
   List<Object?> get props => <Object?>[distanceLabel, durationLabel];
 }
 
+final class MapRouteViewRequested extends MapEvent {
+  const MapRouteViewRequested();
+}
+
 // ------------------------------------------------------------------ state
 
 class MapState extends Equatable {
@@ -90,6 +94,7 @@ class MapState extends Equatable {
     this.userPosition = const LatLng(0, 0),
     this.sheetVisible = false,
     this.activeRoute,
+    this.routeViewRequested = false,
     this.routeRequestId = 0,
   });
 
@@ -101,6 +106,7 @@ class MapState extends Equatable {
   final LatLng userPosition;
   final bool sheetVisible;
   final ActiveRoute? activeRoute;
+  final bool routeViewRequested;
   final int routeRequestId;
 
   /// The highest-ranked recommendation — the card at the top of the sheet.
@@ -128,9 +134,11 @@ class MapState extends Equatable {
     bool? sheetVisible,
     ActiveRoute? activeRoute,
     int? routeRequestId,
+    bool? routeViewRequested,
     bool clearSelection = false,
     bool clearError = false,
     bool clearRoute = false,
+    bool clearRouteViewRequested = false,
   }) => MapState(
     status: status ?? this.status,
     recommendations: recommendations ?? this.recommendations,
@@ -140,6 +148,9 @@ class MapState extends Equatable {
     userPosition: userPosition ?? this.userPosition,
     sheetVisible: sheetVisible ?? this.sheetVisible,
     activeRoute: clearRoute ? null : activeRoute ?? this.activeRoute,
+    routeViewRequested: clearRouteViewRequested
+        ? false
+        : routeViewRequested ?? this.routeViewRequested,
     routeRequestId: routeRequestId ?? this.routeRequestId,
   );
 
@@ -153,6 +164,7 @@ class MapState extends Equatable {
     userPosition,
     sheetVisible,
     activeRoute,
+    routeViewRequested,
     routeRequestId,
   ];
 }
@@ -171,6 +183,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapOverviewRequested>(_onOverviewRequested);
     on<MapUserPositionUpdated>(_onUserPositionUpdated);
     on<MapRouteResolved>(_onRouteResolved);
+    on<MapRouteViewRequested>(_onRouteViewRequested);
   }
 
   final GetNearbyFacilities _getNearbyFacilities;
@@ -236,6 +249,9 @@ class MapBloc extends Bloc<MapEvent, MapState> {
               ? MapViewMode.overview
               : MapViewMode.facility,
           sheetVisible: true,
+          routeRequestId: event.focusFacilityId == null
+              ? state.routeRequestId
+              : state.routeRequestId + 1,
         ),
       );
     } on Failure catch (failure) {
@@ -333,6 +349,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         mode: MapViewMode.facility,
         sheetVisible: true,
         clearRoute: true,
+        clearRouteViewRequested: true,
         routeRequestId: state.routeRequestId + 1,
       ),
     );
@@ -349,6 +366,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         clearSelection: true,
         sheetVisible: true,
         clearRoute: true,
+        clearRouteViewRequested: true,
       ),
     );
     _persistMapState(state.userPosition, null);
@@ -380,6 +398,13 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         ),
       ),
     );
+  }
+
+  void _onRouteViewRequested(
+    MapRouteViewRequested event,
+    Emitter<MapState> emit,
+  ) {
+    emit(state.copyWith(routeViewRequested: true));
   }
 
   Future<void> _persistMapState(LatLng position, String? selectedId) =>

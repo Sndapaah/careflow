@@ -472,11 +472,45 @@ class _TopControls extends StatelessWidget {
   }
 }
 
-class _Sheet extends StatelessWidget {
+class _Sheet extends StatefulWidget {
   const _Sheet({required this.state, required this.controller});
 
   final MapState state;
   final DraggableScrollableController controller;
+
+  @override
+  State<_Sheet> createState() => _SheetState();
+}
+
+class _SheetState extends State<_Sheet> {
+  final GlobalKey _contentKey = GlobalKey();
+  double _measuredFacilityMin = _sheetPeek;
+
+  MapState get state => widget.state;
+  DraggableScrollableController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureFacilityContent());
+  }
+
+  @override
+  void didUpdateWidget(covariant _Sheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureFacilityContent());
+  }
+
+  void _measureFacilityContent() {
+    if (!mounted || state.mode != MapViewMode.facility || state.activeRoute != null) return;
+    final RenderBox? box = _contentKey.currentContext?.findRenderObject() as RenderBox?;
+    final double screenHeight = MediaQuery.sizeOf(context).height;
+    if (box == null || screenHeight <= 0) return;
+    final double measured = (box.size.height / screenHeight).clamp(_sheetPeek, _sheetFull);
+    if ((measured - _measuredFacilityMin).abs() > 0.005) {
+      setState(() => _measuredFacilityMin = measured);
+    }
+  }
 
   List<double> get _snapStops {
     final bool isOverview = state.mode == MapViewMode.overview;
@@ -493,16 +527,23 @@ class _Sheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isOverview = state.mode == MapViewMode.overview;
     final List<double> stops = _snapStops;
+    final bool hasRoute = state.activeRoute != null;
+    final double facilityMin = hasRoute ? _sheetPeek : _measuredFacilityMin;
+    final List<double> effectiveStops = isOverview
+        ? stops
+        : <double>[facilityMin, ...stops.where((double value) => value > facilityMin)];
 
     return DraggableScrollableSheet(
       controller: controller,
-      initialChildSize: isOverview ? _sheetHalf : _sheetCompact,
-      minChildSize: stops.first,
-      maxChildSize: stops.last,
+      initialChildSize: isOverview ? _sheetHalf : (hasRoute ? _sheetCompact : facilityMin),
+      minChildSize: effectiveStops.first,
+      maxChildSize: effectiveStops.last,
       snap: true,
       // snapSizes takes the *intermediate* stops only —
       // min/maxChildSize are already implicit snap targets.
-      snapSizes: stops.length > 2 ? stops.sublist(1, stops.length - 1) : null,
+      snapSizes: effectiveStops.length > 2
+          ? effectiveStops.sublist(1, effectiveStops.length - 1)
+          : null,
       builder: (BuildContext context, ScrollController scrollController) {
         return Container(
           decoration: const BoxDecoration(
@@ -525,9 +566,14 @@ class _Sheet extends StatelessWidget {
                 AppSpacing.md,
                 AppSpacing.xl,
               ),
-              children: isOverview
-                  ? _overviewChildren(context)
-                  : _facilityChildren(context),
+              children: <Widget>[
+                Column(
+                  key: _contentKey,
+                  children: isOverview
+                      ? _overviewChildren(context)
+                      : _facilityChildren(context),
+                ),
+              ],
             ),
           ),
         );
@@ -594,7 +640,8 @@ class _Sheet extends StatelessWidget {
 
     final Facility facility = selected.facility;
     final ActiveRoute? activeRoute = state.activeRoute;
-    final bool hasRouteResolved = activeRoute != null;
+    final bool hasRoute = activeRoute != null;
+    final bool showRouteView = state.routeViewRequested && hasRoute;
 
     return <Widget>[
       const SheetGrabber(),
@@ -603,14 +650,17 @@ class _Sheet extends StatelessWidget {
         facility: facility,
         activeRouteDistance: activeRoute?.distance,
         onCall: () => PhoneLauncher.call(facility.phoneNumber),
-        onNavigate: () => controller.animateTo(
-          hasRouteResolved ? _sheetCompact : _sheetPeek,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        ),
+        onNavigate: () {
+          context.read<MapBloc>().add(const MapRouteViewRequested());
+          controller.animateTo(
+            hasRoute ? _sheetCompact : _sheetPeek,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        },
       ),
 
-      if (hasRouteResolved) ...<Widget>[
+      if (showRouteView) ...<Widget>[
         const SizedBox(height: AppSpacing.xs),
         _RouteEtaBanner(
           distance: activeRoute.distance,
@@ -618,7 +668,7 @@ class _Sheet extends StatelessWidget {
         ),
       ],
 
-      if (!hasRouteResolved) ...<Widget>[
+      if (!showRouteView) ...<Widget>[
         const SizedBox(height: AppSpacing.md),
         LastUpdatedRow(facility: facility),
         const Divider(height: AppSpacing.xl),

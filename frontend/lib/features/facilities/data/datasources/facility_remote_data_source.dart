@@ -108,31 +108,10 @@ class FacilityHttpDataSource implements FacilityRemoteDataSource {
 
   @override
   Future<FacilityModel> fetchById(String id) async {
-    final List<FacilityRecommendation>? cached = _cache.fresh;
-    if (cached != null) {
-      for (final FacilityRecommendation r in cached) {
-        if (r.facility.id == id) {
-          final Facility f = r.facility;
-          return _toFacilityModel(<String, dynamic>{
-            '_id': f.id,
-            'name': f.name,
-            'distance': f.distanceKm,
-            'latitude': f.latitude,
-            'longitude': f.longitude,
-            'maxCapacity': f.bedCapacity,
-            'currentPatients': f.currentPatients,
-            'availableBeds': f.totalBeds,
-            'availableDoctors': f.staffCount,
-            'averageWaitingTime': f.waitMinutes,
-            'emergency': f.isEmergencyCapable,
-            'phone': f.phoneNumber,
-            'specialties': f.departments,
-            'services': f.services,
-            'isOpen': f.isLive,
-          });
-        }
-      }
-    }
+    // Always read details from the server. Recommendation results are cached
+    // for the diagnosis flow and may contain telemetry from an earlier poll;
+    // using them here made the map and detail screens disagree after the
+    // occupancy simulator updated a facility.
     final List<Map<String, dynamic>> hospitals = await _recommend(
       includeAll: true,
       resultLimit: 1000,

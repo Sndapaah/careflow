@@ -107,7 +107,7 @@ class SymptomHttpRepositoryImpl implements SymptomRepository {
     final List<PossibleCondition> conditions = conditionsJson.map((dynamic c) {
       final Map<String, dynamic> map = c as Map<String, dynamic>;
       final String name =
-          (map['name'] ?? map['condition'] ?? 'Unknown') as String;
+          (map['name'] ?? map['condition'] ?? 'Unknown').toString();
       final num probability =
           (map['confidence'] as num?) ?? (map['probability'] as num?) ?? 0.5;
       final int confidence = probability <= 1

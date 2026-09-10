@@ -58,6 +58,16 @@ const hospitalSchema = new mongoose.Schema({
         type:Number,
         default:0
     },
+    // Persistent state used by the GHIMS/LHIMS-style occupancy simulator.
+    simulationDirection: {
+        type: String,
+        enum: ["increasing", "decreasing"],
+        default: "increasing"
+    },
+    simulationStep: {
+        type: Number,
+        default: 1
+    },
     isAcceptingEmergencyCases: {
         type:Boolean,
         default:true

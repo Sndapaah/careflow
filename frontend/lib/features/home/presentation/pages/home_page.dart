@@ -134,7 +134,21 @@ class _HomeViewState extends State<_HomeView> {
           ),
         );
     if (request != null && context.mounted) {
+      // The symptom workflow owns this submission. Clear the home form before
+      // leaving it so returning from analysis, recommendations, or the map
+      // never resurrects the previous symptom context.
+      _clearSymptomForm();
       await context.push(AppRoutes.analysis, extra: request);
+      if (mounted) _clearSymptomForm();
+    }
+  }
+
+  void _clearSymptomForm() {
+    _symptomController.clear();
+    _notesController.clear();
+    _symptomFocus.unfocus();
+    if (mounted) {
+      context.read<HomeBloc>().add(const HomeSymptomQueryChanged(''));
     }
   }
 

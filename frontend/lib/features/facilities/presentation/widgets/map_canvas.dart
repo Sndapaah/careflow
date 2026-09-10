@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import '../../../../core/services/directions_service.dart';
 import '../../domain/entities/facility.dart';
+import 'map_overlays.dart';
 
 /// Dark blue / navy map styling structure — removes busy components while
 /// using dark slate, rich midnight blue geometry colors, and distinct accents.
@@ -64,6 +65,9 @@ class _MapCanvasState extends State<MapCanvas> {
   List<LatLng> _routePoints = <LatLng>[];
   bool _loadingRoute = false;
   int _lastFetchedRequestId = -1;
+  Offset? _calloutPosition;
+  DateTime _lastCameraUpdate = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _cameraMoving = false;
 
   @override
   void initState() {
@@ -71,6 +75,7 @@ class _MapCanvasState extends State<MapCanvas> {
     if (widget.selectedFacilityId != null) {
       _lastFetchedRequestId = widget.routeRequestId;
       WidgetsBinding.instance.addPostFrameCallback((_) => _fetchRoute());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _updateCalloutPosition());
     }
   }
 
@@ -92,14 +97,16 @@ class _MapCanvasState extends State<MapCanvas> {
       );
     }
     // FIXED: Now checks routeRequestId tracking index changes to cleanly capture repeat navigation signals
+    final bool selectionChanged =
+        oldWidget.selectedFacilityId != widget.selectedFacilityId;
     if (widget.selectedFacilityId != null &&
-        widget.routeRequestId != _lastFetchedRequestId) {
+        (selectionChanged || widget.routeRequestId != _lastFetchedRequestId)) {
       _lastFetchedRequestId = widget.routeRequestId;
       _fetchRoute();
     } else if (widget.selectedFacilityId == null &&
         oldWidget.selectedFacilityId != null) {
       // Clear route points immediately if selection is revoked or cleared by overview requests
-      setState(() => _routePoints = <LatLng>[]);
+      setState(() { _routePoints = <LatLng>[]; _calloutPosition = null; });
     }
   }
 
@@ -154,8 +161,34 @@ class _MapCanvasState extends State<MapCanvas> {
     });
 
     widget.onRouteResolved?.call(result);
+    // Open the same native facility popup that appears after a manual marker
+    // tap, once the selected destination and route are both ready.
     _fitBounds(facility);
   }
+
+  Future<void> _updateCalloutPosition() async {
+    final controller = _controller;
+    final facility = _selected;
+    if (!mounted || controller == null || facility == null) return;
+    final point = await controller.getScreenCoordinate(LatLng(facility.latitude, facility.longitude));
+    if (!mounted) return;
+    final density = MediaQuery.devicePixelRatioOf(context);
+    final size = MediaQuery.sizeOf(context);
+    const width = 240.0, height = 104.0, edge = 8.0;
+    final x = (point.x / density - width / 2).clamp(edge, size.width - width - edge);
+    final y = (point.y / density - height - 42).clamp(edge, size.height - height - edge);
+    setState(() => _calloutPosition = Offset(x, y));
+  }
+
+  void _onCameraMove(CameraPosition _) {
+    _cameraMoving = true;
+    final now = DateTime.now();
+    if (now.difference(_lastCameraUpdate) < const Duration(milliseconds: 80)) return;
+    _lastCameraUpdate = now;
+    _updateCalloutPosition();
+  }
+
+  void _onCameraIdle() { _cameraMoving = false; _updateCalloutPosition(); }
 
   void _fitBounds(Facility facility) {
     final GoogleMapController? controller = _controller;
@@ -215,7 +248,10 @@ class _MapCanvasState extends State<MapCanvas> {
           onMapCreated: (GoogleMapController controller) {
             _controller = controller;
             widget.onMapReady?.call(controller);
+            _updateCalloutPosition();
           },
+          onCameraMove: _onCameraMove,
+          onCameraIdle: _onCameraIdle,
           myLocationEnabled: widget.locationPermissionGranted,
           myLocationButtonEnabled: false,
           markers: <Marker>{
@@ -225,11 +261,6 @@ class _MapCanvasState extends State<MapCanvas> {
                 position: LatLng(f.latitude, f.longitude),
                 icon: _markerIcon(f.id == widget.selectedFacilityId),
                 // FIXED: Enriched native window text strings with complete live telemetry parameters
-                infoWindow: InfoWindow(
-                  title: f.name,
-                  snippet:
-                      '${f.load.label} • ${f.currentPatients} patients • ${f.incomingPatients} incoming',
-                ),
                 onTap: () => widget.onMarkerTap?.call(f),
               ),
           },
@@ -243,6 +274,15 @@ class _MapCanvasState extends State<MapCanvas> {
               ),
           },
         ),
+        if (_selected != null && _calloutPosition != null && !_cameraMoving)
+          Positioned(
+            left: _calloutPosition!.dx,
+            top: _calloutPosition!.dy,
+            width: 240,
+            child: IgnorePointer(
+              child: FacilityCallout(facility: _selected!),
+            ),
+          ),
         if (_loadingRoute)
           const Positioned(
             top: 12,

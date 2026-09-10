@@ -503,8 +503,11 @@ class RecentSymptomTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         child: Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -521,15 +524,25 @@ class RecentSymptomTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   symptom.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodyLarge.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
               ),
-              Text(
-                symptom.whenLabel,
-                style: AppTextStyles.bodyLarge.copyWith(
-                  color: AppColors.textMuted,
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                flex: 0,
+                child: Text(
+                  symptom.whenLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ],

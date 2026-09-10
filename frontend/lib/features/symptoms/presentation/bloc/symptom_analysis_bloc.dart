@@ -39,16 +39,23 @@ final class SymptomSeverityOverridden extends SymptomAnalysisEvent {
 class SymptomAnalysisState extends Equatable {
   const SymptomAnalysisState({
     this.status = BlocStatus.initial,
+    this.request,
     this.analysis,
     this.errorMessage,
   });
 
   final BlocStatus status;
+  final SymptomCheckRequest? request;
   final SymptomAnalysis? analysis;
   final String? errorMessage;
 
   @override
-  List<Object?> get props => <Object?>[status, analysis, errorMessage];
+  List<Object?> get props => <Object?>[
+    status,
+    request,
+    analysis,
+    errorMessage,
+  ];
 }
 
 // ------------------------------------------------------------------- bloc
@@ -68,17 +75,37 @@ class SymptomAnalysisBloc
     SymptomAnalysisRequested event,
     Emitter<SymptomAnalysisState> emit,
   ) async {
-    emit(const SymptomAnalysisState(status: BlocStatus.loading));
+    emit(
+      SymptomAnalysisState(
+        status: BlocStatus.loading,
+        request: event.request,
+      ),
+    );
     try {
       final SymptomAnalysis analysis = await _analyzeSymptoms(event.request);
       emit(
-        SymptomAnalysisState(status: BlocStatus.success, analysis: analysis),
+        SymptomAnalysisState(
+          status: BlocStatus.success,
+          request: event.request,
+          analysis: analysis,
+        ),
       );
     } on Failure catch (failure) {
       emit(
         SymptomAnalysisState(
           status: BlocStatus.failure,
+          request: event.request,
           errorMessage: failure.message,
+        ),
+      );
+    } catch (_) {
+      // Response mapping and unexpected client errors must leave the loading
+      // state as a recoverable error so the user can retry the same request.
+      emit(
+        SymptomAnalysisState(
+          status: BlocStatus.failure,
+          request: event.request,
+          errorMessage: 'We could not display the analysis. Please try again.',
         ),
       );
     }
